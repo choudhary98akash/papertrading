@@ -1,15 +1,15 @@
 {
-  "symbol": "ICICIBANK",
+  "symbol": "RELIANCE",
   "date": "2026-06-11",
-  "entry": 1317.0,
-  "stop_loss": 1303.83,
-  "target": 1343.34,
+  "entry": 2850.0,
+  "stop_loss": 2821.5,
+  "target": 2907.0,
   "risk_pct": -1.0,
   "reward_pct": 2.0,
   "rr": 2.0,
-  "ltp": 1317.0,
-  "atr_pct": 2.04,
-  "vol_surge": 2.22,
-  "score": 7.79,
-  "run_date": "2026-06-12"
+  "ltp": 2850.0,
+  "atr_pct": 1.8,
+  "vol_surge": 1.5,
+  "score": 7.2,
+  "run_date": "2026-06-11"
 }
