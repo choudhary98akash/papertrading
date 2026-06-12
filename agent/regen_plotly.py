@@ -1,0 +1,116 @@
+import sys, os, json, numpy as np, pandas as pd, yfinance as yf
+
+# ICICIBANK June 12 - real data
+df = yf.download("ICICIBANK.NS", period="2d", interval="1m", progress=False, auto_adjust=True)
+if isinstance(df.columns, pd.MultiIndex):
+    df.columns = df.columns.get_level_values(0)
+td = df[df.index.date == pd.Timestamp("2026-06-12").date()]
+
+times = [ts.strftime("%H:%M") for ts in td.index]
+closes = [round(c, 2) for c in td["Close"].tolist()]
+entry, sl, target = 1317.0, 1303.83, 1343.34
+cmin, cmax = min(closes), max(closes)
+pad = (cmax - cmin) * 0.15 or 2
+ylo = min(cmin - pad, sl - 2)
+yhi = max(cmax + pad, target + 2)
+lst_close = closes[-1]
+
+html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Report - ICICIBANK - 2026-06-12</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+  * {{ margin:0; padding:0; box-sizing:border-box; }}
+  body {{ background:#0a0f1e; color:#e2e8f0; font-family:'Segoe UI','Inter',sans-serif; padding:24px; }}
+  .container {{ max-width:960px; margin:0 auto; }}
+  .header {{ background:linear-gradient(135deg,#1e293b,#0f172a); border:1px solid #334155; border-radius:16px; padding:24px; margin-bottom:20px; }}
+  .header h1 {{ font-size:24px; font-weight:800; }}
+  .result-badge {{ display:inline-block; padding:6px 16px; border-radius:8px; font-weight:700; font-size:14px; margin-top:8px; }}
+  .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }}
+  .card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:16px; }}
+  .card .label {{ color:#64748b; font-size:11px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }}
+  .card .value {{ font-size:20px; font-weight:700; font-family:monospace; }}
+  .card .sub {{ color:#475569; font-size:12px; margin-top:4px; }}
+  .chart-card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:8px; margin-bottom:20px; }}
+  .stats {{ display:flex; gap:12px; flex-wrap:wrap; }}
+  .stat {{ background:#1e293b; padding:8px 14px; border-radius:8px; font-size:12px; }}
+  .stat span {{ color:#94a3b8; }}
+  .stat strong {{ color:#e2e8f0; font-family:monospace; }}
+  .footer {{ text-align:center; color:#334155; font-size:11px; font-family:monospace; margin-top:20px; padding:16px; border-top:1px solid #1e293b; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header" style="text-align:center;">
+    <div style="color:#64748b;font-size:11px;font-family:monospace;letter-spacing:2px;margin-bottom:8px;">NIFTY 50 INTRADAY SCREENER</div>
+    <h1>2026-06-12 &middot; ICICIBANK</h1>
+    <div style="margin-top:12px;">
+      <span class="result-badge" style="background:#4ade8022;color:#4ade80;border:1px solid #4ade8044;">✓ TARGET_HIT &mdash; +2.00%</span>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="label">Stock</div><div class="value" style="font-size:28px;">ICICIBANK</div><div class="sub">NSE &middot; CASH</div></div>
+    <div class="card"><div class="label">Score</div><div class="value" style="color:#a78bfa;">7.79</div><div class="sub">ATR 1.65% &middot; Vol Surge 1.8x</div></div>
+    <div class="card"><div class="label">Entry Zone</div><div class="value" style="color:#60a5fa;">\u20b9{entry}</div><div class="sub">Close at signal time</div></div>
+    <div class="card"><div class="label">Stop Loss</div><div class="value" style="color:#f87171;">\u20b9{sl}</div><div class="sub">-1% &middot; OK</div></div>
+    <div class="card"><div class="label">Target</div><div class="value" style="color:#4ade80;">\u20b9{target}</div><div class="sub">+2% &middot; HIT</div></div>
+    <div class="card"><div class="label">Risk:Reward</div><div class="value" style="color:#fbbf24;">1:2.0</div><div class="sub">Min 1:2 required</div></div>
+  </div>
+  <div class="chart-card" id="chart"></div>
+  <div class="full-card" style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:20px;">
+    <h2 style="font-size:14px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px;">Day Summary</h2>
+    <div class="stats">
+      <div class="stat"><span>Open</span> <strong>\u20b9{td['Open'].iloc[0]:.2f}</strong></div>
+      <div class="stat"><span>High</span> <strong style="color:#4ade80;">\u20b9{td['High'].max():.2f}</strong></div>
+      <div class="stat"><span>Low</span> <strong style="color:#f87171;">\u20b9{td['Low'].min():.2f}</strong></div>
+      <div class="stat"><span>Close</span> <strong>\u20b9{td['Close'].iloc[-1]:.2f}</strong></div>
+      <div class="stat"><span>Range</span> <strong>\u20b9{td['High'].max() - td['Low'].min():.2f}</strong></div>
+      <div class="stat"><span>Candles</span> <strong>{len(td)}</strong></div>
+    </div>
+  </div>
+  <div class="footer">
+    Generated by Nifty 50 Intraday Screener &middot; 2026-06-12 21:01:00<br>
+    <span style="color:#1e293b;">This is AI-generated research for educational purposes only. Not SEBI registered advice.</span>
+  </div>
+</div>
+<script>
+var x = {json.dumps(times)};
+var y = {json.dumps(closes)};
+var n = x.length;
+var idx = [...Array(n).keys()];
+var step = Math.max(1, Math.floor(n/14));
+Plotly.newPlot('chart', [{{
+  x: idx, y: y, type:'scatter', mode:'lines',
+  line:{{color:'#818cf8', width:2}},
+  fill:'tozeroy', fillcolor:'rgba(129,140,248,0.08)',
+  hovertemplate:'%{{text}}<br>\u20b9%{{y:,.2f}}<extra></extra>',
+  text: x
+}}], {{
+  paper_bgcolor:'#0f172a', plot_bgcolor:'#0f172a',
+  margin:{{l:50, r:16, t:16, b:40}},
+  font:{{color:'#94a3b8', family:'monospace', size:11}},
+  xaxis:{{showgrid:true, gridcolor:'#1e293b', tickvals:idx.filter(function(v){{return v%step===0||v===n-1;}}), ticktext:x.filter(function(_,i){{return i%step===0||i===n-1;}}), tickfont:{{size:10}}}},
+  yaxis:{{showgrid:true, gridcolor:'#1e293b', tickprefix:'\u20b9', tickfont:{{size:10}}, range:[{ylo:.2f}, {yhi:.2f}]}},
+  shapes:[
+    {{type:'line', x0:0, x1:n-1, y0:{entry}, y1:{entry}, line:{{color:'#60a5fa', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+    {{type:'line', x0:0, x1:n-1, y0:{sl}, y1:{sl}, line:{{color:'#f87171', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+    {{type:'line', x0:0, x1:n-1, y0:{target}, y1:{target}, line:{{color:'#4ade80', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}}
+  ],
+  annotations:[
+    {{x:0, y:{entry}, xref:'x', yref:'y', text:'Entry \u20b9{entry}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#60a5fa', size:10}}}},
+    {{x:0, y:{sl}, xref:'x', yref:'y', text:'SL \u20b9{sl}', showarrow:false, xanchor:'left', yanchor:'top', font:{{color:'#f87171', size:10}}}},
+    {{x:0, y:{target}, xref:'x', yref:'y', text:'TARGET HIT \u20b9{target}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#4ade80', size:10}}}},
+    {{x:n-1, y:{lst_close}, xref:'x', yref:'y', text:'Close \u20b9{lst_close:.2f}', showarrow:false, xanchor:'right', yanchor:'bottom', font:{{color:'#e2e8f0', size:10}}}}
+  ],
+  hovermode:'x unified', dragmode:'zoom',
+}});
+</script>
+</body>
+</html>"""
+
+with open("report/2026-06-12_21-01.html", "w", encoding="utf-8") as f:
+    f.write(html)
+os.write(2, b"Plotly report done\n")

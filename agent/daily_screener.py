@@ -366,71 +366,6 @@ def generate_dashboard():
 
 # ─── Report Generation ───
 
-def svg_chart(closes, times, entry, sl, target, sl_label, tgt_label):
-    W, H = 800, 360
-    ML, MR, MT, MB = 70, 16, 24, 44
-    PW = W - ML - MR
-    PH = H - MT - MB
-
-    cmin = min(closes)
-    cmax = max(closes)
-    pad = max((cmax - cmin) * 0.12, (cmax - cmin) * 0.12 or 2)
-    ylo = min(cmin - pad, sl - 2)
-    yhi = max(cmax + pad, target + 2)
-
-    def sx(i): return ML + PW * i / max(len(closes) - 1, 1)
-    def sy(v): return MT + PH * (yhi - v) / (yhi - ylo)
-
-    pts = " ".join(f"{sx(i)},{sy(v)}" for i, v in enumerate(closes))
-    fill_pts = f"{sx(0)},{H} {pts} {sx(len(closes)-1)},{H}"
-
-    tick_step = max(1, len(times) // 14)
-    x_ticks = [(i, times[i]) for i in range(0, len(times), tick_step)]
-    y_range = yhi - ylo
-    y_step = 10 ** round(__import__("math").log10(y_range)) / 4
-    y_ticks = []
-    v = round(ylo / y_step) * y_step
-    while v <= yhi:
-        y_ticks.append(v)
-        v += y_step
-
-    svg = f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">'
-    svg += f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0f172a" rx="12"/>'
-    svg += f'<clipPath id="cp"><rect x="{ML}" y="{MT}" width="{PW}" height="{PH}"/></clipPath>'
-    svg += f'<g clip-path="url(#cp)">'
-    svg += f'<polygon points="{fill_pts}" fill="rgba(129,140,248,0.1)"/>'
-    svg += f'<polyline points="{pts}" fill="none" stroke="#818cf8" stroke-width="2" stroke-linejoin="round"/>'
-    svg += f'</g>'
-
-    for v in y_ticks:
-        y = sy(v)
-        svg += f'<line x1="{ML}" y1="{y}" x2="{W-MR}" y2="{y}" stroke="#1e293b" stroke-width="1"/>'
-        svg += f'<text x="{ML-6}" y="{y+4}" fill="#64748b" font-family="monospace" font-size="11" text-anchor="end">₹{v:,.0f}</text>'
-
-    for i, t in x_ticks:
-        x = sx(i)
-        svg += f'<line x1="{x}" y1="{MT}" x2="{x}" y2="{H-MB}" stroke="#1e293b" stroke-width="1"/>'
-        svg += f'<text x="{x}" y="{H-MB+16}" fill="#64748b" font-family="monospace" font-size="10" text-anchor="middle">{t}</text>'
-
-    lines = [
-        (entry, "#60a5fa", f"Entry ₹{entry}", "bottom"),
-        (sl, "#f87171", f"{sl_label} ₹{sl}", "top"),
-        (target, "#4ade80", f"{tgt_label} ₹{target}", "bottom"),
-    ]
-    for v, color, label, anchor in lines:
-        y = sy(v)
-        svg += f'<line x1="{ML}" y1="{y}" x2="{W-MR}" y2="{y}" stroke="{color}" stroke-width="1.5" stroke-dasharray="6,4"/>'
-        dy = 4 if anchor == "top" else -4
-        svg += f'<text x="{ML+4}" y="{y+dy}" fill="{color}" font-family="monospace" font-size="11" font-weight="600" dominant-baseline="{anchor}">{label}</text>'
-
-    close_val = closes[-1]
-    yc = sy(close_val)
-    svg += f'<text x="{W-MR-4}" y="{yc-4}" fill="#e2e8f0" font-family="monospace" font-size="11" font-weight="600" text-anchor="end">Close ₹{close_val:,.2f}</text>'
-
-    svg += '</svg>'
-    return svg
-
-
 def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str):
     low_today = today_data["Low"].min()
     high_today = today_data["High"].max()
@@ -449,7 +384,11 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
     sl_label = "SL HIT" if sl_hit else "SL"
     tgt_label = "TARGET HIT" if tgt_hit else "TARGET"
 
-    chart_svg = svg_chart(closes, times, entry, sl, target, sl_label, tgt_label)
+    cmin = min(closes)
+    cmax = max(closes)
+    pad = (cmax - cmin) * 0.15 or 2
+    ylo = min(cmin - pad, sl - 2)
+    yhi = max(cmax + pad, target + 2)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -457,6 +396,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Report - {pick['symbol']} - {pick['run_date']}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ background:#0a0f1e; color:#e2e8f0; font-family:'Segoe UI','Inter',sans-serif; padding:24px; }}
@@ -469,7 +409,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
   .card .label {{ color:#64748b; font-size:11px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }}
   .card .value {{ font-size:20px; font-weight:700; font-family:monospace; }}
   .card .sub {{ color:#475569; font-size:12px; margin-top:4px; }}
-  .chart-card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; margin-bottom:20px; overflow:hidden; }}
+  .chart-card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:8px; margin-bottom:20px; }}
   .stats {{ display:flex; gap:12px; flex-wrap:wrap; }}
   .stat {{ background:#1e293b; padding:8px 14px; border-radius:8px; font-size:12px; }}
   .stat span {{ color:#94a3b8; }}
@@ -496,7 +436,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
     <div class="card"><div class="label">Target</div><div class="value" style="color:#4ade80;">\u20b9{target}</div><div class="sub">+2% &middot; {'HIT' if tgt_hit else 'Missed'}</div></div>
     <div class="card"><div class="label">Risk:Reward</div><div class="value" style="color:#fbbf24;">1:{pick['rr']}</div><div class="sub">Min 1:2 required</div></div>
   </div>
-  <div class="chart-card">{chart_svg}</div>
+  <div class="chart-card" id="chart"></div>
   <div class="full-card" style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:20px;">
     <h2 style="font-size:14px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px;">Day Summary</h2>
     <div class="stats">
@@ -513,6 +453,38 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
     <span style="color:#1e293b;">This is AI-generated research for educational purposes only. Not SEBI registered advice.</span>
   </div>
 </div>
+<script>
+var x = {json.dumps(times)};
+var y = {json.dumps(closes)};
+var n = x.length;
+var idx = [...Array(n).keys()];
+var step = Math.max(1, Math.floor(n/14));
+Plotly.newPlot('chart', [{{
+  x: idx, y: y, type:'scatter', mode:'lines',
+  line:{{color:'#818cf8', width:2}},
+  fill:'tozeroy', fillcolor:'rgba(129,140,248,0.08)',
+  hovertemplate:'%{{text}}<br>\u20b9%{{y:,.2f}}<extra></extra>',
+  text: x
+}}], {{
+  paper_bgcolor:'#0f172a', plot_bgcolor:'#0f172a',
+  margin:{{l:50, r:16, t:16, b:40}},
+  font:{{color:'#94a3b8', family:'monospace', size:11}},
+  xaxis:{{showgrid:true, gridcolor:'#1e293b', tickvals:idx.filter(function(v){{return v%step===0||v===n-1;}}), ticktext:x.filter(function(_,i){{return i%step===0||i===n-1;}}), tickfont:{{size:10}}}},
+  yaxis:{{showgrid:true, gridcolor:'#1e293b', tickprefix:'\u20b9', tickfont:{{size:10}}, range:[{ylo}, {yhi}]}},
+  shapes:[
+    {{type:'line', x0:0, x1:n-1, y0:{entry}, y1:{entry}, line:{{color:'#60a5fa', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+    {{type:'line', x0:0, x1:n-1, y0:{sl}, y1:{sl}, line:{{color:'#f87171', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+    {{type:'line', x0:0, x1:n-1, y0:{target}, y1:{target}, line:{{color:'#4ade80', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}}
+  ],
+  annotations:[
+    {{x:0, y:{entry}, xref:'x', yref:'y', text:'Entry \u20b9{entry}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#60a5fa', size:10}}}},
+    {{x:0, y:{sl}, xref:'x', yref:'y', text:'{sl_label} \u20b9{sl}', showarrow:false, xanchor:'left', yanchor:'top', font:{{color:'#f87171', size:10}}}},
+    {{x:0, y:{target}, xref:'x', yref:'y', text:'{tgt_label} \u20b9{target}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#4ade80', size:10}}}},
+    {{x:n-1, y:{closes[-1]}, xref:'x', yref:'y', text:'Close \u20b9{closes[-1]:.2f}', showarrow:false, xanchor:'right', yanchor:'bottom', font:{{color:'#e2e8f0', size:10}}}}
+  ],
+  hovermode:'x unified', dragmode:'zoom',
+}});
+</script>
 </body>
 </html>"""
 
