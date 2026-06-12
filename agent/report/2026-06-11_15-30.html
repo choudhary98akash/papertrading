@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Report - RELIANCE - 2026-06-11</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { background:#0a0f1e; color:#e2e8f0; font-family:'Segoe UI','Inter',sans-serif; padding:24px; }
@@ -16,14 +17,7 @@
   .card .label { color:#64748b; font-size:11px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
   .card .value { font-size:20px; font-weight:700; font-family:monospace; }
   .card .sub { color:#475569; font-size:12px; margin-top:4px; }
-  .full-card { background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:16px; margin-bottom:20px; }
-  .full-card h2 { font-size:14px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-bottom:12px; }
-  table { width:100%; border-collapse:collapse; font-size:12px; font-family:monospace; }
-  th { color:#64748b; text-align:left; padding:8px 6px; border-bottom:1px solid #1e293b; }
-  td { padding:4px 6px; border-bottom:1px solid #0f172a; }
-  tr:hover td { background:#1e293b44; }
-  .up { color:#4ade80; }
-  .down { color:#f87171; }
+  .chart-card { background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:8px; margin-bottom:20px; }
   .stats { display:flex; gap:12px; flex-wrap:wrap; }
   .stat { background:#1e293b; padding:8px 14px; border-radius:8px; font-size:12px; }
   .stat span { color:#94a3b8; }
@@ -35,7 +29,7 @@
 <div class="container">
   <div class="header" style="text-align:center;">
     <div style="color:#64748b;font-size:11px;font-family:monospace;letter-spacing:2px;margin-bottom:8px;">NIFTY 50 INTRADAY SCREENER</div>
-    <h1>2026-06-11</h1>
+    <h1>2026-06-11 &middot; RELIANCE</h1>
     <div style="margin-top:12px;">
       <span class="result-badge" style="background:#4ade8022;color:#4ade80;border:1px solid #4ade8044;">
         ✅ TARGET_HIT &mdash; +2.00%
@@ -50,8 +44,9 @@
     <div class="card"><div class="label">Target</div><div class="value" style="color:#4ade80;">₹2907.0</div><div class="sub">+2% &middot; HIT</div></div>
     <div class="card"><div class="label">Risk:Reward</div><div class="value" style="color:#fbbf24;">1:2.0</div><div class="sub">Min 1:2 required</div></div>
   </div>
-  <div class="full-card">
-    <h2>Day Summary</h2>
+  <div class="chart-card" id="chart"></div>
+  <div class="full-card" style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:20px;">
+    <h2 style="font-size:14px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px;">Day Summary</h2>
     <div class="stats">
       <div class="stat"><span>Open</span> <strong>₹2850.99</strong></div>
       <div class="stat"><span>High</span> <strong style="color:#4ade80;">₹2908.50</strong></div>
@@ -61,106 +56,50 @@
       <div class="stat"><span>Candles</span> <strong>375</strong></div>
     </div>
   </div>
-  <div class="full-card">
-    <h2>Intraday Price Action (1-min candles)</h2>
-    <div style="max-height:400px;overflow-y:auto;">
-      <table><thead><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol</th></tr></thead>
-      <tbody><tr><td>14:00</td><td class="up">2842.74</td><td class="up">2843.66</td><td class="up">2839.66</td><td class="up">2844.73</td><td>467,631</td></tr>
-<tr><td>14:01</td><td class="up">2842.43</td><td class="up">2843.39</td><td class="up">2842.16</td><td class="up">2843.27</td><td>154,400</td></tr>
-<tr><td>14:02</td><td class="up">2843.61</td><td class="up">2845.08</td><td class="up">2843.57</td><td class="up">2844.29</td><td>256,222</td></tr>
-<tr><td>14:03</td><td class="up">2844.17</td><td class="up">2845.13</td><td class="up">2842.45</td><td class="up">2847.42</td><td>131,852</td></tr>
-<tr><td>14:04</td><td class="down">2842.93</td><td class="down">2843.71</td><td class="down">2840.38</td><td class="down">2841.96</td><td>414,900</td></tr>
-<tr><td>14:05</td><td class="up">2842.51</td><td class="up">2844.12</td><td class="up">2839.33</td><td class="up">2843.90</td><td>477,501</td></tr>
-<tr><td>14:06</td><td class="up">2841.52</td><td class="up">2842.77</td><td class="up">2840.48</td><td class="up">2841.61</td><td>219,052</td></tr>
-<tr><td>14:07</td><td class="up">2840.34</td><td class="up">2843.35</td><td class="up">2837.77</td><td class="up">2840.75</td><td>156,481</td></tr>
-<tr><td>14:08</td><td class="up">2842.04</td><td class="up">2843.19</td><td class="up">2840.58</td><td class="up">2844.34</td><td>363,427</td></tr>
-<tr><td>14:09</td><td class="up">2842.76</td><td class="up">2845.35</td><td class="up">2841.43</td><td class="up">2843.52</td><td>133,691</td></tr>
-<tr><td>14:10</td><td class="up">2841.37</td><td class="up">2844.12</td><td class="up">2838.99</td><td class="up">2842.18</td><td>494,341</td></tr>
-<tr><td>14:11</td><td class="up">2843.17</td><td class="up">2843.74</td><td class="up">2841.02</td><td class="up">2844.78</td><td>298,137</td></tr>
-<tr><td>14:12</td><td class="down">2843.79</td><td class="down">2844.94</td><td class="down">2843.71</td><td class="down">2843.24</td><td>126,170</td></tr>
-<tr><td>14:13</td><td class="down">2845.41</td><td class="down">2846.54</td><td class="down">2842.44</td><td class="down">2844.15</td><td>108,438</td></tr>
-<tr><td>14:14</td><td class="down">2846.67</td><td class="down">2846.76</td><td class="down">2843.79</td><td class="down">2845.10</td><td>382,239</td></tr>
-<tr><td>14:15</td><td class="down">2845.01</td><td class="down">2845.74</td><td class="down">2844.14</td><td class="down">2842.06</td><td>247,226</td></tr>
-<tr><td>14:16</td><td class="up">2843.89</td><td class="up">2844.28</td><td class="up">2842.00</td><td class="up">2846.98</td><td>371,896</td></tr>
-<tr><td>14:17</td><td class="down">2845.39</td><td class="down">2848.64</td><td class="down">2843.39</td><td class="down">2843.73</td><td>155,426</td></tr>
-<tr><td>14:18</td><td class="down">2846.61</td><td class="down">2849.04</td><td class="down">2844.85</td><td class="down">2846.28</td><td>339,968</td></tr>
-<tr><td>14:19</td><td class="down">2846.57</td><td class="down">2849.34</td><td class="down">2845.62</td><td class="down">2846.15</td><td>388,963</td></tr>
-<tr><td>14:20</td><td class="up">2846.80</td><td class="up">2849.02</td><td class="up">2845.97</td><td class="up">2847.26</td><td>454,195</td></tr>
-<tr><td>14:21</td><td class="up">2849.36</td><td class="up">2849.73</td><td class="up">2847.88</td><td class="up">2850.58</td><td>255,289</td></tr>
-<tr><td>14:22</td><td class="up">2848.17</td><td class="up">2849.15</td><td class="up">2845.50</td><td class="up">2849.46</td><td>361,501</td></tr>
-<tr><td>14:23</td><td class="down">2849.27</td><td class="down">2851.26</td><td class="down">2847.22</td><td class="down">2848.39</td><td>319,780</td></tr>
-<tr><td>14:24</td><td class="down">2848.86</td><td class="down">2849.14</td><td class="down">2847.73</td><td class="down">2848.61</td><td>395,138</td></tr>
-<tr><td>14:25</td><td class="up">2848.43</td><td class="up">2850.64</td><td class="up">2846.16</td><td class="up">2848.85</td><td>246,108</td></tr>
-<tr><td>14:26</td><td class="down">2850.62</td><td class="down">2851.88</td><td class="down">2849.28</td><td class="down">2850.25</td><td>308,347</td></tr>
-<tr><td>14:27</td><td class="up">2852.28</td><td class="up">2853.40</td><td class="up">2849.63</td><td class="up">2854.69</td><td>197,756</td></tr>
-<tr><td>14:28</td><td class="up">2853.90</td><td class="up">2856.11</td><td class="up">2853.66</td><td class="up">2854.64</td><td>195,665</td></tr>
-<tr><td>14:29</td><td class="up">2856.51</td><td class="up">2858.46</td><td class="up">2855.38</td><td class="up">2857.62</td><td>231,717</td></tr>
-<tr><td>14:30</td><td class="up">2856.56</td><td class="up">2857.69</td><td class="up">2856.18</td><td class="up">2857.55</td><td>262,002</td></tr>
-<tr><td>14:31</td><td class="up">2857.92</td><td class="up">2860.58</td><td class="up">2857.71</td><td class="up">2859.68</td><td>361,691</td></tr>
-<tr><td>14:32</td><td class="up">2857.30</td><td class="up">2857.72</td><td class="up">2854.64</td><td class="up">2857.57</td><td>181,835</td></tr>
-<tr><td>14:33</td><td class="down">2857.95</td><td class="down">2860.06</td><td class="down">2856.92</td><td class="down">2856.00</td><td>222,232</td></tr>
-<tr><td>14:34</td><td class="up">2857.69</td><td class="up">2859.78</td><td class="up">2855.84</td><td class="up">2858.29</td><td>318,561</td></tr>
-<tr><td>14:35</td><td class="down">2857.88</td><td class="down">2859.07</td><td class="down">2856.43</td><td class="down">2856.90</td><td>343,051</td></tr>
-<tr><td>14:36</td><td class="down">2859.07</td><td class="down">2860.90</td><td class="down">2857.09</td><td class="down">2858.28</td><td>257,547</td></tr>
-<tr><td>14:37</td><td class="up">2857.43</td><td class="up">2857.68</td><td class="up">2855.86</td><td class="up">2858.31</td><td>143,732</td></tr>
-<tr><td>14:38</td><td class="up">2861.62</td><td class="up">2864.04</td><td class="up">2861.40</td><td class="up">2863.48</td><td>312,695</td></tr>
-<tr><td>14:39</td><td class="up">2859.61</td><td class="up">2860.92</td><td class="up">2857.11</td><td class="up">2859.64</td><td>408,449</td></tr>
-<tr><td>14:40</td><td class="up">2857.18</td><td class="up">2858.16</td><td class="up">2856.17</td><td class="up">2857.64</td><td>277,109</td></tr>
-<tr><td>14:41</td><td class="up">2859.50</td><td class="up">2862.04</td><td class="up">2859.44</td><td class="up">2862.05</td><td>109,346</td></tr>
-<tr><td>14:42</td><td class="up">2861.08</td><td class="up">2861.87</td><td class="up">2860.01</td><td class="up">2861.44</td><td>362,731</td></tr>
-<tr><td>14:43</td><td class="up">2862.33</td><td class="up">2862.42</td><td class="up">2859.33</td><td class="up">2866.23</td><td>112,763</td></tr>
-<tr><td>14:44</td><td class="up">2863.58</td><td class="up">2863.64</td><td class="up">2861.23</td><td class="up">2864.43</td><td>290,237</td></tr>
-<tr><td>14:45</td><td class="down">2863.56</td><td class="down">2865.67</td><td class="down">2862.41</td><td class="down">2860.92</td><td>338,553</td></tr>
-<tr><td>14:46</td><td class="up">2861.76</td><td class="up">2861.98</td><td class="up">2860.61</td><td class="up">2862.89</td><td>431,759</td></tr>
-<tr><td>14:47</td><td class="up">2861.92</td><td class="up">2865.17</td><td class="up">2860.74</td><td class="up">2862.49</td><td>220,987</td></tr>
-<tr><td>14:48</td><td class="up">2860.56</td><td class="up">2861.14</td><td class="up">2856.99</td><td class="up">2862.50</td><td>316,823</td></tr>
-<tr><td>14:49</td><td class="up">2862.51</td><td class="up">2865.71</td><td class="up">2860.63</td><td class="up">2863.52</td><td>191,353</td></tr>
-<tr><td>14:50</td><td class="down">2862.22</td><td class="down">2863.93</td><td class="down">2860.29</td><td class="down">2862.01</td><td>321,373</td></tr>
-<tr><td>14:51</td><td class="down">2860.57</td><td class="down">2861.97</td><td class="down">2858.04</td><td class="down">2858.73</td><td>457,792</td></tr>
-<tr><td>14:52</td><td class="down">2859.92</td><td class="down">2860.88</td><td class="down">2858.19</td><td class="down">2859.61</td><td>125,556</td></tr>
-<tr><td>14:53</td><td class="down">2860.75</td><td class="down">2862.65</td><td class="down">2859.51</td><td class="down">2859.47</td><td>421,186</td></tr>
-<tr><td>14:54</td><td class="down">2859.62</td><td class="down">2861.09</td><td class="down">2858.32</td><td class="down">2858.75</td><td>118,099</td></tr>
-<tr><td>14:55</td><td class="up">2857.98</td><td class="up">2860.58</td><td class="up">2856.55</td><td class="up">2858.86</td><td>471,233</td></tr>
-<tr><td>14:56</td><td class="up">2858.47</td><td class="up">2860.08</td><td class="up">2857.00</td><td class="up">2860.97</td><td>276,168</td></tr>
-<tr><td>14:57</td><td class="up">2858.96</td><td class="up">2860.61</td><td class="up">2856.73</td><td class="up">2859.55</td><td>303,058</td></tr>
-<tr><td>14:58</td><td class="down">2857.94</td><td class="down">2859.08</td><td class="down">2856.39</td><td class="down">2856.15</td><td>244,302</td></tr>
-<tr><td>14:59</td><td class="up">2857.00</td><td class="up">2858.44</td><td class="up">2854.77</td><td class="up">2857.67</td><td>302,041</td></tr>
-<tr><td>15:00</td><td class="up">2857.46</td><td class="up">2859.27</td><td class="up">2856.04</td><td class="up">2859.26</td><td>133,866</td></tr>
-<tr><td>15:01</td><td class="down">2854.57</td><td class="down">2854.78</td><td class="down">2852.99</td><td class="down">2853.65</td><td>205,400</td></tr>
-<tr><td>15:02</td><td class="down">2851.75</td><td class="down">2851.90</td><td class="down">2851.25</td><td class="down">2851.55</td><td>446,390</td></tr>
-<tr><td>15:03</td><td class="up">2850.32</td><td class="up">2852.56</td><td class="up">2847.90</td><td class="up">2850.34</td><td>439,119</td></tr>
-<tr><td>15:04</td><td class="down">2849.89</td><td class="down">2851.56</td><td class="down">2848.04</td><td class="down">2848.71</td><td>443,701</td></tr>
-<tr><td>15:05</td><td class="up">2850.51</td><td class="up">2851.83</td><td class="up">2848.01</td><td class="up">2851.48</td><td>237,488</td></tr>
-<tr><td>15:06</td><td class="down">2853.46</td><td class="down">2854.98</td><td class="down">2852.07</td><td class="down">2853.28</td><td>172,516</td></tr>
-<tr><td>15:07</td><td class="up">2855.18</td><td class="up">2857.02</td><td class="up">2851.59</td><td class="up">2855.81</td><td>286,987</td></tr>
-<tr><td>15:08</td><td class="down">2854.86</td><td class="down">2855.82</td><td class="down">2853.50</td><td class="down">2853.53</td><td>394,746</td></tr>
-<tr><td>15:09</td><td class="down">2854.82</td><td class="down">2855.54</td><td class="down">2852.21</td><td class="down">2854.16</td><td>289,139</td></tr>
-<tr><td>15:10</td><td class="up">2852.81</td><td class="up">2854.51</td><td class="up">2852.35</td><td class="up">2853.90</td><td>258,588</td></tr>
-<tr><td>15:11</td><td class="down">2852.78</td><td class="down">2853.30</td><td class="down">2850.66</td><td class="down">2852.22</td><td>229,295</td></tr>
-<tr><td>15:12</td><td class="up">2852.20</td><td class="up">2854.11</td><td class="up">2851.75</td><td class="up">2854.79</td><td>187,969</td></tr>
-<tr><td>15:13</td><td class="down">2852.84</td><td class="down">2853.05</td><td class="down">2851.97</td><td class="down">2852.25</td><td>232,161</td></tr>
-<tr><td>15:14</td><td class="up">2851.19</td><td class="up">2853.72</td><td class="up">2847.78</td><td class="up">2851.53</td><td>305,735</td></tr>
-<tr><td>15:15</td><td class="up">2852.23</td><td class="up">2854.20</td><td class="up">2850.92</td><td class="up">2853.63</td><td>241,559</td></tr>
-<tr><td>15:16</td><td class="down">2855.29</td><td class="down">2857.05</td><td class="down">2853.58</td><td class="down">2853.17</td><td>362,299</td></tr>
-<tr><td>15:17</td><td class="down">2855.08</td><td class="down">2857.56</td><td class="down">2852.71</td><td class="down">2852.44</td><td>223,950</td></tr>
-<tr><td>15:18</td><td class="down">2855.88</td><td class="down">2859.05</td><td class="down">2853.88</td><td class="down">2853.59</td><td>429,638</td></tr>
-<tr><td>15:19</td><td class="up">2857.26</td><td class="up">2859.78</td><td class="up">2855.61</td><td class="up">2859.15</td><td>176,229</td></tr>
-<tr><td>15:20</td><td class="down">2856.46</td><td class="down">2856.80</td><td class="down">2854.59</td><td class="down">2855.63</td><td>204,648</td></tr>
-<tr><td>15:21</td><td class="up">2856.91</td><td class="up">2857.13</td><td class="up">2853.00</td><td class="up">2860.74</td><td>138,547</td></tr>
-<tr><td>15:22</td><td class="down">2856.93</td><td class="down">2857.81</td><td class="down">2855.49</td><td class="down">2856.09</td><td>128,795</td></tr>
-<tr><td>15:23</td><td class="up">2857.13</td><td class="up">2858.65</td><td class="up">2855.43</td><td class="up">2857.40</td><td>286,368</td></tr>
-<tr><td>15:24</td><td class="up">2855.58</td><td class="up">2857.60</td><td class="up">2853.03</td><td class="up">2857.89</td><td>121,447</td></tr>
-<tr><td>15:25</td><td class="up">2855.63</td><td class="up">2856.40</td><td class="up">2853.02</td><td class="up">2858.64</td><td>267,670</td></tr>
-<tr><td>15:26</td><td class="up">2856.63</td><td class="up">2858.31</td><td class="up">2853.94</td><td class="up">2859.72</td><td>321,823</td></tr>
-<tr><td>15:27</td><td class="up">2859.53</td><td class="up">2860.27</td><td class="up">2857.39</td><td class="up">2861.34</td><td>356,190</td></tr>
-<tr><td>15:28</td><td class="up">2861.45</td><td class="up">2862.34</td><td class="up">2861.09</td><td class="up">2862.98</td><td>306,402</td></tr>
-<tr><td>15:29</td><td class="up">2865.75</td><td class="up">2908.50</td><td class="up">2862.62</td><td class="up">2866.64</td><td>352,419</td></tr></tbody></table>
-    </div>
-  </div>
   <div class="footer">
     Generated by Nifty 50 Intraday Screener &middot; 2026-06-11 15:30:00<br>
     <span style="color:#1e293b;">This is AI-generated research for educational purposes only. Not SEBI registered advice.</span>
   </div>
 </div>
+<script>
+var times = ["09:15", "09:16", "09:17", "09:18", "09:19", "09:20", "09:21", "09:22", "09:23", "09:24", "09:25", "09:26", "09:27", "09:28", "09:29", "09:30", "09:31", "09:32", "09:33", "09:34", "09:35", "09:36", "09:37", "09:38", "09:39", "09:40", "09:41", "09:42", "09:43", "09:44", "09:45", "09:46", "09:47", "09:48", "09:49", "09:50", "09:51", "09:52", "09:53", "09:54", "09:55", "09:56", "09:57", "09:58", "09:59", "10:00", "10:01", "10:02", "10:03", "10:04", "10:05", "10:06", "10:07", "10:08", "10:09", "10:10", "10:11", "10:12", "10:13", "10:14", "10:15", "10:16", "10:17", "10:18", "10:19", "10:20", "10:21", "10:22", "10:23", "10:24", "10:25", "10:26", "10:27", "10:28", "10:29", "10:30", "10:31", "10:32", "10:33", "10:34", "10:35", "10:36", "10:37", "10:38", "10:39", "10:40", "10:41", "10:42", "10:43", "10:44", "10:45", "10:46", "10:47", "10:48", "10:49", "10:50", "10:51", "10:52", "10:53", "10:54", "10:55", "10:56", "10:57", "10:58", "10:59", "11:00", "11:01", "11:02", "11:03", "11:04", "11:05", "11:06", "11:07", "11:08", "11:09", "11:10", "11:11", "11:12", "11:13", "11:14", "11:15", "11:16", "11:17", "11:18", "11:19", "11:20", "11:21", "11:22", "11:23", "11:24", "11:25", "11:26", "11:27", "11:28", "11:29", "11:30", "11:31", "11:32", "11:33", "11:34", "11:35", "11:36", "11:37", "11:38", "11:39", "11:40", "11:41", "11:42", "11:43", "11:44", "11:45", "11:46", "11:47", "11:48", "11:49", "11:50", "11:51", "11:52", "11:53", "11:54", "11:55", "11:56", "11:57", "11:58", "11:59", "12:00", "12:01", "12:02", "12:03", "12:04", "12:05", "12:06", "12:07", "12:08", "12:09", "12:10", "12:11", "12:12", "12:13", "12:14", "12:15", "12:16", "12:17", "12:18", "12:19", "12:20", "12:21", "12:22", "12:23", "12:24", "12:25", "12:26", "12:27", "12:28", "12:29", "12:30", "12:31", "12:32", "12:33", "12:34", "12:35", "12:36", "12:37", "12:38", "12:39", "12:40", "12:41", "12:42", "12:43", "12:44", "12:45", "12:46", "12:47", "12:48", "12:49", "12:50", "12:51", "12:52", "12:53", "12:54", "12:55", "12:56", "12:57", "12:58", "12:59", "13:00", "13:01", "13:02", "13:03", "13:04", "13:05", "13:06", "13:07", "13:08", "13:09", "13:10", "13:11", "13:12", "13:13", "13:14", "13:15", "13:16", "13:17", "13:18", "13:19", "13:20", "13:21", "13:22", "13:23", "13:24", "13:25", "13:26", "13:27", "13:28", "13:29", "13:30", "13:31", "13:32", "13:33", "13:34", "13:35", "13:36", "13:37", "13:38", "13:39", "13:40", "13:41", "13:42", "13:43", "13:44", "13:45", "13:46", "13:47", "13:48", "13:49", "13:50", "13:51", "13:52", "13:53", "13:54", "13:55", "13:56", "13:57", "13:58", "13:59", "14:00", "14:01", "14:02", "14:03", "14:04", "14:05", "14:06", "14:07", "14:08", "14:09", "14:10", "14:11", "14:12", "14:13", "14:14", "14:15", "14:16", "14:17", "14:18", "14:19", "14:20", "14:21", "14:22", "14:23", "14:24", "14:25", "14:26", "14:27", "14:28", "14:29", "14:30", "14:31", "14:32", "14:33", "14:34", "14:35", "14:36", "14:37", "14:38", "14:39", "14:40", "14:41", "14:42", "14:43", "14:44", "14:45", "14:46", "14:47", "14:48", "14:49", "14:50", "14:51", "14:52", "14:53", "14:54", "14:55", "14:56", "14:57", "14:58", "14:59", "15:00", "15:01", "15:02", "15:03", "15:04", "15:05", "15:06", "15:07", "15:08", "15:09", "15:10", "15:11", "15:12", "15:13", "15:14", "15:15", "15:16", "15:17", "15:18", "15:19", "15:20", "15:21", "15:22", "15:23", "15:24", "15:25", "15:26", "15:27", "15:28", "15:29"];
+var close = [2849.27, 2851.17, 2850.88, 2854.96, 2855.08, 2854.6, 2857.91, 2861.24, 2858.56, 2858.59, 2859.48, 2858.89, 2855.75, 2854.66, 2851.36, 2848.74, 2849.22, 2847.56, 2846.16, 2842.89, 2846.1, 2843.98, 2843.6, 2845.31, 2840.55, 2840.56, 2836.51, 2839.54, 2837.31, 2841.17, 2839.02, 2840.18, 2844.56, 2840.54, 2840.23, 2834.52, 2842.13, 2832.69, 2829.65, 2834.04, 2837.65, 2836.41, 2834.94, 2834.39, 2831.82, 2830.24, 2828.6, 2830.45, 2830.88, 2826.32, 2827.68, 2824.79, 2825.83, 2825.72, 2827.61, 2831.39, 2831.53, 2830.21, 2827.13, 2829.96, 2831.89, 2828.64, 2827.56, 2826.33, 2825.68, 2830.0, 2827.7, 2830.81, 2832.91, 2828.75, 2832.52, 2834.91, 2835.7, 2838.33, 2834.8, 2834.59, 2833.93, 2834.16, 2834.98, 2830.26, 2829.81, 2829.41, 2832.42, 2830.28, 2833.39, 2827.89, 2830.55, 2831.17, 2832.53, 2831.77, 2834.28, 2833.34, 2833.36, 2831.03, 2834.72, 2826.79, 2829.63, 2830.64, 2830.32, 2828.95, 2826.21, 2825.62, 2824.65, 2824.71, 2826.26, 2822.92, 2825.47, 2827.74, 2832.26, 2827.04, 2826.86, 2826.87, 2823.64, 2830.25, 2831.46, 2829.05, 2829.24, 2826.34, 2827.97, 2830.03, 2830.75, 2830.81, 2832.41, 2831.12, 2829.6, 2836.82, 2835.59, 2830.21, 2833.97, 2834.24, 2827.48, 2831.94, 2827.94, 2827.2, 2826.33, 2830.35, 2828.06, 2828.11, 2827.55, 2826.73, 2824.81, 2829.37, 2824.97, 2825.59, 2829.07, 2830.42, 2827.22, 2822.03, 2824.23, 2827.12, 2826.02, 2829.97, 2825.73, 2825.89, 2825.72, 2824.96, 2828.26, 2830.5, 2828.49, 2827.19, 2824.42, 2825.24, 2831.07, 2827.01, 2827.37, 2832.0, 2836.8, 2836.85, 2837.63, 2834.98, 2832.93, 2832.83, 2830.86, 2832.38, 2833.01, 2833.18, 2835.7, 2836.86, 2835.46, 2842.83, 2841.93, 2841.61, 2839.41, 2842.02, 2840.65, 2841.33, 2843.54, 2844.26, 2841.31, 2837.46, 2834.59, 2836.67, 2838.24, 2835.29, 2836.27, 2837.41, 2836.35, 2835.76, 2836.71, 2833.79, 2831.44, 2834.12, 2837.48, 2837.99, 2837.95, 2837.47, 2838.03, 2836.91, 2840.5, 2846.19, 2846.6, 2848.46, 2850.83, 2852.01, 2852.21, 2853.72, 2851.93, 2852.11, 2852.27, 2852.07, 2853.05, 2847.71, 2854.32, 2847.64, 2848.41, 2849.17, 2848.35, 2849.71, 2848.61, 2847.96, 2843.48, 2846.98, 2848.48, 2844.37, 2851.15, 2852.12, 2848.96, 2848.64, 2845.68, 2850.64, 2847.02, 2846.99, 2846.64, 2849.11, 2846.05, 2846.44, 2848.32, 2842.39, 2845.56, 2851.0, 2845.95, 2847.1, 2853.91, 2853.5, 2854.11, 2851.42, 2852.21, 2854.76, 2851.5, 2855.07, 2852.56, 2853.94, 2847.85, 2843.5, 2841.82, 2841.14, 2842.7, 2843.88, 2840.18, 2839.69, 2843.4, 2838.23, 2841.12, 2844.4, 2839.65, 2839.99, 2842.76, 2842.54, 2841.98, 2841.62, 2839.22, 2839.54, 2847.1, 2841.89, 2846.26, 2844.73, 2843.27, 2844.29, 2847.42, 2841.96, 2843.9, 2841.61, 2840.75, 2844.34, 2843.52, 2842.18, 2844.78, 2843.24, 2844.15, 2845.1, 2842.06, 2846.98, 2843.73, 2846.28, 2846.15, 2847.26, 2850.58, 2849.46, 2848.39, 2848.61, 2848.85, 2850.25, 2854.69, 2854.64, 2857.62, 2857.55, 2859.68, 2857.57, 2856.0, 2858.29, 2856.9, 2858.28, 2858.31, 2863.48, 2859.64, 2857.64, 2862.05, 2861.44, 2866.23, 2864.43, 2860.92, 2862.89, 2862.49, 2862.5, 2863.52, 2862.01, 2858.73, 2859.61, 2859.47, 2858.75, 2858.86, 2860.97, 2859.55, 2856.15, 2857.67, 2859.26, 2853.65, 2851.55, 2850.34, 2848.71, 2851.48, 2853.28, 2855.81, 2853.53, 2854.16, 2853.9, 2852.22, 2854.79, 2852.25, 2851.53, 2853.63, 2853.17, 2852.44, 2853.59, 2859.15, 2855.63, 2860.74, 2856.09, 2857.4, 2857.89, 2858.64, 2859.72, 2861.34, 2862.98, 2866.64];
+var entry = 2850.0;
+var sl = 2821.5;
+var target = 2907.0;
+
+var shapes = [
+  {type:'line', x0:times[0], x1:times[times.length-1], y0:entry, y1:entry, line:{color:'#60a5fa', width:2, dash:'dash'}},
+  {type:'line', x0:times[0], x1:times[times.length-1], y0:sl, y1:sl, line:{color:'#f87171', width:2, dash:'dash'}},
+  {type:'line', x0:times[0], x1:times[times.length-1], y0:target, y1:target, line:{color:'#4ade80', width:2, dash:'dash'}},
+];
+
+var annotations = [
+  {x:times[0], y:entry, xref:'x', yref:'y', text:'Entry ₹2850.0', showarrow:false, xanchor:'left', yanchor:'bottom', font:{color:'#60a5fa', size:10}},
+  {x:times[0], y:sl, xref:'x', yref:'y', text:'SL ₹2821.5', showarrow:false, xanchor:'left', yanchor:'top', font:{color:'#f87171', size:10}},
+  {x:times[0], y:target, xref:'x', yref:'y', text:'TARGET HIT ₹2907.0', showarrow:false, xanchor:'left', yanchor:'bottom', font:{color:'#4ade80', size:10}},
+  {x:times[times.length-1], y:close[close.length-1], xref:'x', yref:'y', text:'Close ₹' + close[close.length-1].toFixed(2), showarrow:false, xanchor:'right', yanchor:'bottom', font:{color:'#e2e8f0', size:10}},
+];
+
+var data = [{
+  x: times, y: close, type: 'scatter', mode: 'lines',
+  line: {color: '#818cf8', width: 2},
+  fill: 'tozeroy', fillcolor: 'rgba(129,140,248,0.08)',
+  hoverinfo: 'x+y', hovertemplate: '%{x}<br>₹%{y:,.2f}<extra></extra>'
+}];
+
+var layout = {
+  paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a',
+  margin: {l:60, r:16, t:24, b:40},
+  font: {color:'#94a3b8', family:'monospace', size:11},
+  xaxis: {showgrid:true, gridcolor:'#1e293b', tick0:'09:15', dtick:31, tickfont:{size:10}},
+  yaxis: {showgrid:true, gridcolor:'#1e293b', tickprefix:'₹', tickfont:{size:10}},
+  shapes: shapes, annotations: annotations,
+  hovermode: 'x unified',
+  dragmode: 'zoom',
+};
+
+Plotly.newPlot('chart', data, layout, {responsive:true, displayModeBar:false});
+</script>
 </body>
 </html>

@@ -371,16 +371,22 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
     high_today = today_data["High"].max()
     last_price = today_data["Close"].iloc[-1]
     open_price = today_data["Open"].iloc[0]
+    entry = pick["entry"]
+    sl = pick["stop_loss"]
+    target = pick["target"]
 
     result_color = "#4ade80" if "TARGET" in result else "#f87171" if "SL" in result else "#eab308"
     result_icon = "✅" if "TARGET" in result else "❌" if "SL" in result else "⏳"
 
-    rows = []
-    for ts, row in today_data.iterrows():
-        t = ts.strftime("%H:%M")
-        cls = "up" if row["Close"] >= row["Open"] else "down"
-        rows.append(f"<tr><td>{t}</td><td class=\"{cls}\">{row['Open']:.2f}</td><td class=\"{cls}\">{row['High']:.2f}</td><td class=\"{cls}\">{row['Low']:.2f}</td><td class=\"{cls}\">{row['Close']:.2f}</td><td>{int(row['Volume']):,}</td></tr>")
-    rows_html = "\n".join(rows[-90:])
+    times = [ts.strftime("%H:%M") for ts in today_data.index]
+    closes = [round(c, 2) for c in today_data["Close"].tolist()]
+
+    sl_label = "SL HIT" if sl_hit else "SL"
+    tgt_label = "TARGET HIT" if tgt_hit else "TARGET"
+
+    tz_offset = "+05:30"
+    tick0 = times[0]
+    dtick = max(1, len(times) // 12)
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -388,6 +394,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Daily Report - {pick['symbol']} - {pick['run_date']}</title>
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
 <style>
   * {{ margin:0; padding:0; box-sizing:border-box; }}
   body {{ background:#0a0f1e; color:#e2e8f0; font-family:'Segoe UI','Inter',sans-serif; padding:24px; }}
@@ -400,14 +407,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
   .card .label {{ color:#64748b; font-size:11px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }}
   .card .value {{ font-size:20px; font-weight:700; font-family:monospace; }}
   .card .sub {{ color:#475569; font-size:12px; margin-top:4px; }}
-  .full-card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:16px; margin-bottom:20px; }}
-  .full-card h2 {{ font-size:14px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-bottom:12px; }}
-  table {{ width:100%; border-collapse:collapse; font-size:12px; font-family:monospace; }}
-  th {{ color:#64748b; text-align:left; padding:8px 6px; border-bottom:1px solid #1e293b; }}
-  td {{ padding:4px 6px; border-bottom:1px solid #0f172a; }}
-  tr:hover td {{ background:#1e293b44; }}
-  .up {{ color:#4ade80; }}
-  .down {{ color:#f87171; }}
+  .chart-card {{ background:#0f172a; border:1px solid #1e293b; border-radius:12px; padding:8px; margin-bottom:20px; }}
   .stats {{ display:flex; gap:12px; flex-wrap:wrap; }}
   .stat {{ background:#1e293b; padding:8px 14px; border-radius:8px; font-size:12px; }}
   .stat span {{ color:#94a3b8; }}
@@ -419,7 +419,7 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
 <div class="container">
   <div class="header" style="text-align:center;">
     <div style="color:#64748b;font-size:11px;font-family:monospace;letter-spacing:2px;margin-bottom:8px;">NIFTY 50 INTRADAY SCREENER</div>
-    <h1>{pick['run_date']}</h1>
+    <h1>{pick['run_date']} &middot; {pick['symbol']}</h1>
     <div style="margin-top:12px;">
       <span class="result-badge" style="background:{result_color}22;color:{result_color};border:1px solid {result_color}44;">
         {result_icon} {result} &mdash; {pnl}
@@ -429,13 +429,14 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
   <div class="grid">
     <div class="card"><div class="label">Stock</div><div class="value" style="font-size:28px;">{pick['symbol']}</div><div class="sub">NSE &middot; CASH</div></div>
     <div class="card"><div class="label">Score</div><div class="value" style="color:#a78bfa;">{pick['score']}</div><div class="sub">ATR {pick['atr_pct']}% &middot; Vol Surge {pick['vol_surge']}x</div></div>
-    <div class="card"><div class="label">Entry Zone</div><div class="value" style="color:#60a5fa;">\u20b9{pick['entry']}</div><div class="sub">Close at signal time</div></div>
-    <div class="card"><div class="label">Stop Loss</div><div class="value" style="color:#f87171;">\u20b9{pick['stop_loss']}</div><div class="sub">-1% &middot; {'SL HIT' if sl_hit else 'OK'}</div></div>
-    <div class="card"><div class="label">Target</div><div class="value" style="color:#4ade80;">\u20b9{pick['target']}</div><div class="sub">+2% &middot; {'HIT' if tgt_hit else 'Missed'}</div></div>
+    <div class="card"><div class="label">Entry Zone</div><div class="value" style="color:#60a5fa;">\u20b9{entry}</div><div class="sub">Close at signal time</div></div>
+    <div class="card"><div class="label">Stop Loss</div><div class="value" style="color:#f87171;">\u20b9{sl}</div><div class="sub">-1% &middot; {'SL HIT' if sl_hit else 'OK'}</div></div>
+    <div class="card"><div class="label">Target</div><div class="value" style="color:#4ade80;">\u20b9{target}</div><div class="sub">+2% &middot; {'HIT' if tgt_hit else 'Missed'}</div></div>
     <div class="card"><div class="label">Risk:Reward</div><div class="value" style="color:#fbbf24;">1:{pick['rr']}</div><div class="sub">Min 1:2 required</div></div>
   </div>
-  <div class="full-card">
-    <h2>Day Summary</h2>
+  <div class="chart-card" id="chart"></div>
+  <div class="full-card" style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:16px;margin-bottom:20px;">
+    <h2 style="font-size:14px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;color:#64748b;margin-bottom:12px;">Day Summary</h2>
     <div class="stats">
       <div class="stat"><span>Open</span> <strong>\u20b9{open_price:.2f}</strong></div>
       <div class="stat"><span>High</span> <strong style="color:#4ade80;">\u20b9{high_today:.2f}</strong></div>
@@ -445,18 +446,51 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
       <div class="stat"><span>Candles</span> <strong>{len(today_data)}</strong></div>
     </div>
   </div>
-  <div class="full-card">
-    <h2>Intraday Price Action (1-min candles)</h2>
-    <div style="max-height:400px;overflow-y:auto;">
-      <table><thead><tr><th>Time</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Vol</th></tr></thead>
-      <tbody>{rows_html}</tbody></table>
-    </div>
-  </div>
   <div class="footer">
     Generated by Nifty 50 Intraday Screener &middot; {now_str}<br>
     <span style="color:#1e293b;">This is AI-generated research for educational purposes only. Not SEBI registered advice.</span>
   </div>
 </div>
+<script>
+var times = {json.dumps(times)};
+var close = {json.dumps(closes)};
+var entry = {entry};
+var sl = {sl};
+var target = {target};
+
+var shapes = [
+  {{type:'line', x0:times[0], x1:times[times.length-1], y0:entry, y1:entry, line:{{color:'#60a5fa', width:2, dash:'dash'}}}},
+  {{type:'line', x0:times[0], x1:times[times.length-1], y0:sl, y1:sl, line:{{color:'#f87171', width:2, dash:'dash'}}}},
+  {{type:'line', x0:times[0], x1:times[times.length-1], y0:target, y1:target, line:{{color:'#4ade80', width:2, dash:'dash'}}}},
+];
+
+var annotations = [
+  {{x:times[0], y:entry, xref:'x', yref:'y', text:'Entry \u20b9{entry}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#60a5fa', size:10}}}},
+  {{x:times[0], y:sl, xref:'x', yref:'y', text:'{sl_label} \u20b9{sl}', showarrow:false, xanchor:'left', yanchor:'top', font:{{color:'#f87171', size:10}}}},
+  {{x:times[0], y:target, xref:'x', yref:'y', text:'{tgt_label} \u20b9{target}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#4ade80', size:10}}}},
+  {{x:times[times.length-1], y:close[close.length-1], xref:'x', yref:'y', text:'Close \u20b9' + close[close.length-1].toFixed(2), showarrow:false, xanchor:'right', yanchor:'bottom', font:{{color:'#e2e8f0', size:10}}}},
+];
+
+var data = [{{
+  x: times, y: close, type: 'scatter', mode: 'lines',
+  line: {{color: '#818cf8', width: 2}},
+  fill: 'tozeroy', fillcolor: 'rgba(129,140,248,0.08)',
+  hoverinfo: 'x+y', hovertemplate: '%{{x}}<br>\u20b9%{{y:,.2f}}<extra></extra>'
+}}];
+
+var layout = {{
+  paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a',
+  margin: {{l:60, r:16, t:24, b:40}},
+  font: {{color:'#94a3b8', family:'monospace', size:11}},
+  xaxis: {{showgrid:true, gridcolor:'#1e293b', tick0:'{tick0}', dtick:{dtick}, tickfont:{{size:10}}}},
+  yaxis: {{showgrid:true, gridcolor:'#1e293b', tickprefix:'\u20b9', tickfont:{{size:10}}}},
+  shapes: shapes, annotations: annotations,
+  hovermode: 'x unified',
+  dragmode: 'zoom',
+}};
+
+Plotly.newPlot('chart', data, layout, {{responsive:true, displayModeBar:false}});
+</script>
 </body>
 </html>"""
 
