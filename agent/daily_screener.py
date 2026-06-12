@@ -452,44 +452,51 @@ def generate_report_html(pick, today_data, result, pnl, sl_hit, tgt_hit, now_str
   </div>
 </div>
 <script>
-var times = {json.dumps(times)};
 var close = {json.dumps(closes)};
 var entry = {entry};
 var sl = {sl};
 var target = {target};
+var n = close.length;
+var xs = [...Array(n).keys()];
+
+var cmin = Math.min(...close);
+var cmax = Math.max(...close);
+var pad = (cmax - cmin) * 0.15 || 1;
+var ylo = Math.min(cmin - pad, sl - 2);
+var yhi = Math.max(cmax + pad, target + 2);
 
 var shapes = [
-  {{type:'line', x0:times[0], x1:times[times.length-1], y0:entry, y1:entry, line:{{color:'#60a5fa', width:2, dash:'dash'}}}},
-  {{type:'line', x0:times[0], x1:times[times.length-1], y0:sl, y1:sl, line:{{color:'#f87171', width:2, dash:'dash'}}}},
-  {{type:'line', x0:times[0], x1:times[times.length-1], y0:target, y1:target, line:{{color:'#4ade80', width:2, dash:'dash'}}}},
+  {{type:'line', x0:0, x1:n-1, y0:entry, y1:entry, line:{{color:'#60a5fa', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+  {{type:'line', x0:0, x1:n-1, y0:sl, y1:sl, line:{{color:'#f87171', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
+  {{type:'line', x0:0, x1:n-1, y0:target, y1:target, line:{{color:'#4ade80', width:1.5, dash:'dash'}}, xref:'x', yref:'y'}},
 ];
-
 var annotations = [
-  {{x:times[0], y:entry, xref:'x', yref:'y', text:'Entry \u20b9{entry}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#60a5fa', size:10}}}},
-  {{x:times[0], y:sl, xref:'x', yref:'y', text:'{sl_label} \u20b9{sl}', showarrow:false, xanchor:'left', yanchor:'top', font:{{color:'#f87171', size:10}}}},
-  {{x:times[0], y:target, xref:'x', yref:'y', text:'{tgt_label} \u20b9{target}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#4ade80', size:10}}}},
-  {{x:times[times.length-1], y:close[close.length-1], xref:'x', yref:'y', text:'Close \u20b9' + close[close.length-1].toFixed(2), showarrow:false, xanchor:'right', yanchor:'bottom', font:{{color:'#e2e8f0', size:10}}}},
+  {{x:0, y:entry, xref:'x', yref:'y', text:'Entry \u20b9{entry}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#60a5fa', size:10}}}},
+  {{x:0, y:sl, xref:'x', yref:'y', text:'{sl_label} \u20b9{sl}', showarrow:false, xanchor:'left', yanchor:'top', font:{{color:'#f87171', size:10}}}},
+  {{x:0, y:target, xref:'x', yref:'y', text:'{tgt_label} \u20b9{target}', showarrow:false, xanchor:'left', yanchor:'bottom', font:{{color:'#4ade80', size:10}}}},
+  {{x:n-1, y:close[n-1], xref:'x', yref:'y', text:'Close \u20b9' + close[n-1].toFixed(2), showarrow:false, xanchor:'right', yanchor:'bottom', font:{{color:'#e2e8f0', size:10}}}},
 ];
+var tickStep = Math.max(1, Math.floor(n / 14));
+var tickVals = xs.filter(function(v){{return v % tickStep === 0 || v === n-1;}});
+var tickText = tickVals.map(function(v){{return {json.dumps(times)}[v];}});
 
-var data = [{{
-  x: times, y: close, type: 'scatter', mode: 'lines',
-  line: {{color: '#818cf8', width: 2}},
-  fill: 'tozeroy', fillcolor: 'rgba(129,140,248,0.08)',
-  hoverinfo: 'x+y', hovertemplate: '%{{x}}<br>\u20b9%{{y:,.2f}}<extra></extra>'
-}}];
-
-var layout = {{
-  paper_bgcolor: '#0f172a', plot_bgcolor: '#0f172a',
-  margin: {{l:60, r:16, t:24, b:40}},
-  font: {{color:'#94a3b8', family:'monospace', size:11}},
-  xaxis: {{showgrid:true, gridcolor:'#1e293b', tick0:'{tick0}', dtick:{dtick}, tickfont:{{size:10}}}},
-  yaxis: {{showgrid:true, gridcolor:'#1e293b', tickprefix:'\u20b9', tickfont:{{size:10}}}},
-  shapes: shapes, annotations: annotations,
-  hovermode: 'x unified',
-  dragmode: 'zoom',
+var trace = {{
+  x: xs, y: close, type:'scatter', mode:'lines',
+  line: {{color:'#818cf8', width:2}},
+  fill:'tozeroy', fillcolor:'rgba(129,140,248,0.08)',
+  hovertemplate:'%{{text}}<br>\u20b9%{{y:,.2f}}<extra></extra>',
+  text: {json.dumps(times)}
 }};
 
-Plotly.newPlot('chart', data, layout, {{responsive:true, displayModeBar:false}});
+var layout = {{
+  paper_bgcolor:'#0f172a', plot_bgcolor:'#0f172a',
+  margin:{{l:60, r:16, t:16, b:40}},
+  font:{{color:'#94a3b8', family:'monospace', size:11}},
+  xaxis:{{showgrid:true, gridcolor:'#1e293b', tickvals:tickVals, ticktext:tickText, tickfont:{{size:10}}, fixedrange:false}},
+  yaxis:{{showgrid:true, gridcolor:'#1e293b', tickprefix:'\u20b9', tickfont:{{size:10}}, range:[ylo, yhi], fixedrange:false}},
+  shapes:shapes, annotations:annotations, hovermode:'x unified', dragmode:'zoom',
+}};
+Plotly.newPlot('chart', [trace], layout, {{responsive:true, displayModeBar:false}});
 </script>
 </body>
 </html>"""
