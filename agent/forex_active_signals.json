@@ -1,0 +1,32 @@
+[
+  {
+    "symbol": "USD/CAD",
+    "timestamp": "2026-06-15 03:30",
+    "direction": "SHORT",
+    "entry": 1.3968,
+    "sl": 1.3976,
+    "tp": 1.3953,
+    "sl_pips": 8.0,
+    "tp_pips": 15.0,
+    "atr_pips": 6.0,
+    "rsi": 45.3,
+    "uptrend": false,
+    "price": 1.3968,
+    "added_at": "2026-06-15 08:03"
+  },
+  {
+    "symbol": "USDCAD",
+    "timestamp": "2026-06-15 03:35",
+    "direction": "SHORT",
+    "entry": 1.39699,
+    "sl": 1.39779,
+    "tp": 1.39549,
+    "sl_pips": 8.0,
+    "tp_pips": 15.0,
+    "atr_pips": 6.1,
+    "rsi": 55.4,
+    "uptrend": false,
+    "price": 1.39699,
+    "added_at": "2026-06-15 08:10"
+  }
+]

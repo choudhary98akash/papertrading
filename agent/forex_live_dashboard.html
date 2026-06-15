@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="refresh" content="60">
+<title>Forex Live Screener</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:#0a0f1e;color:#e2e8f0;font-family:'Inter','Segoe UI',sans-serif;padding:20px;}
+  .top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;}
+  .top h1{font-size:22px;font-weight:800;}
+  .top h1 span{background:linear-gradient(135deg,#4ade80,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .top .status{font-family:monospace;font-size:12px;color:#64748b;}
+  .top .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .dot-green{background:#4ade80;box-shadow:0 0 8px #4ade8044;}
+  .dot-red{background:#f87171;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
+  .card{background:linear-gradient(135deg,#0f172a,#1e293b);border:1px solid #1e293b;border-radius:12px;padding:16px;text-align:center;}
+  .card .num{font-size:28px;font-weight:800;font-family:monospace;}
+  .card .lbl{color:#64748b;font-size:10px;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+  .section-title{font-size:13px;font-family:monospace;text-transform:uppercase;letter-spacing:2px;color:#64748b;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid #1e293b;}
+  .signal-card{background:#0f172a;border:1px solid #312e81;border-radius:12px;padding:16px;margin-bottom:12px;}
+  .signal-card .row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;}
+  .signal-card .pair{font-size:20px;font-weight:700;font-family:monospace;}
+  .signal-card .dir{padding:4px 10px;border-radius:6px;font-size:12px;font-weight:700;}
+  .dir-long{background:#1e3a5f44;color:#60a5fa;border:1px solid #1e3a5f;}
+  .dir-short{background:#5f1e1e44;color:#f87171;border:1px solid #5f1e1e;}
+  .signal-card .levels{display:flex;gap:12px;font-family:monospace;font-size:13px;margin-top:8px;}
+  .levels span{padding:4px 10px;border-radius:6px;}
+  .l-entry{background:#1e3a5f44;color:#60a5fa;border:1px solid #1e3a5f;}
+  .l-sl{background:#450a0a44;color:#f87171;border:1px solid #450a0a;}
+  .l-tp{background:#052e1644;color:#4ade80;border:1px solid #052e16;}
+  .signal-card .detail{color:#64748b;font-size:12px;font-family:monospace;margin-top:6px;}
+  .no-signals{color:#475569;text-align:center;padding:32px;font-size:14px;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{color:#64748b;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:1px;text-align:left;padding:8px;border-bottom:1px solid #1e293b;}
+  td{padding:8px;border-bottom:1px solid #0f172a;white-space:nowrap;font-size:12px;}
+  tr:hover td{background:#0f172a88;}
+  .hit{color:#4ade80;font-weight:700;}
+  .sl{color:#f87171;font-weight:700;}
+  .hold{color:#eab308;}
+  .scroll-wrap{overflow-x:auto;}
+  .footer{text-align:center;color:#1e293b;font-size:11px;font-family:monospace;margin-top:32px;padding:16px;border-top:1px solid #0f172a;}
+  .pair-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:24px;}
+  .pair-chip{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:8px 12px;text-align:center;font-family:monospace;font-size:12px;}
+  .pair-chip .sym{font-weight:700;font-size:14px;}
+  .pair-chip .val{color:#64748b;font-size:11px;margin-top:2px;}
+  .pair-chip .signal-badge{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;}
+  @media(max-width:640px){
+    .signal-card .row{flex-direction:column;align-items:flex-start;}
+    .grid{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+<div class="top">
+  <div>
+    <h1><span>Forex</span> Live Screener</h1>
+    <div class="status"><span class="dot dot-green"></span>SL 8.0p / TP 15.0p &middot; Session: ANY</div>
+  </div>
+  <div class="status" style="text-align:right;">
+    <div style="font-size:13px;font-weight:600;">2026-06-15 09:16:43</div>
+    <div style="font-size:11px;">Auto-refreshes every 60s &middot; <a href="forex_live_dashboard.html" style="color:#6366f1;">refresh</a></div>
+  </div>
+</div>
+
+<div class="grid">
+  <div class="card"><div class="num" style="color:#94a3b8;">2</div><div class="lbl">Active Signals</div></div>
+  <div class="card"><div class="num" style="color:#4ade80;">0</div><div class="lbl">Wins Today</div></div>
+  <div class="card"><div class="num" style="color:#f87171;">2</div><div class="lbl">Losses Today</div></div>
+  <div class="card"><div class="num" style="color:#f87171;">0.0%</div><div class="lbl">Win Rate Today</div></div>
+  <div class="card"><div class="num" style="color:#f87171;">{pnl:+.1f}</div><div class="lbl">PnL (pips)</div></div>
+  <div class="card"><div class="num" style="color:#a78bfa;">0.0</div><div class="lbl">Profit Factor</div></div>
+</div>
+
+<div class="section-title">Pair Watch</div>
+<div class="pair-grid">
+<div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">EUR/USD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">GBP/USD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">USD/JPY</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">AUD/USD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#4ade80;box-shadow:0 0 6px #4ade8044;"></span><div class="sym">USD/CAD</div><div class="val">ACTIVE</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">NZD/USD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">USD/CHF</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">EUR/JPY</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">GBP/JPY</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">EUR/GBP</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">EUR/AUD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">GBP/AUD</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">AUD/JPY</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">CHF/JPY</div><div class="val">watching</div></div><div class="pair-chip"><span class="signal-badge" style="background:#1e293b;"></span><div class="sym">EUR/NZD</div><div class="val">watching</div></div>
+</div>
+
+<div class="section-title">Active Signals (2)</div>
+<div class="signal-card">
+<div class="row">
+  <div><span class="pair">USDCAD</span> <span class="dir dir-short">SHORT</span></div>
+  <div class="detail">at 2026-06-15 03:35 &middot; RSI 55.4 &middot; ATR 6.1p</div>
+</div>
+<div class="levels">
+  <span class="l-entry">E: 1.39699</span>
+  <span class="l-sl">SL: 1.39779</span>
+  <span class="l-tp">TP: 1.39549</span>
+</div>
+<div class="detail">RR 1:1.9</div>
+</div><div class="signal-card">
+<div class="row">
+  <div><span class="pair">USD/CAD</span> <span class="dir dir-short">SHORT</span></div>
+  <div class="detail">at 2026-06-15 03:30 &middot; RSI 45.3 &middot; ATR 6.0p</div>
+</div>
+<div class="levels">
+  <span class="l-entry">E: 1.3968</span>
+  <span class="l-sl">SL: 1.3976</span>
+  <span class="l-tp">TP: 1.3953</span>
+</div>
+<div class="detail">RR 1:1.9</div>
+</div>
+
+<div class="section-title">Today's Trade Log</div>
+<div class="scroll-wrap"><table><thead><tr><th>Date</th><th>Pair</th><th>Dir</th><th>Entry</th><th>Result</th><th>PnL(p)</th><th>PnL(%)</th><th>Exit</th></tr></thead><tbody><tr><td>2026-06-15</td><td style='font-weight:700;'>USDCAD</td><td>LONG</td><td style='font-family:monospace;'>1.39747</td><td class='sl'>SL SL_HIT</td><td style='font-weight:700;font-family:monospace;'>-8.0</td><td style='color:#64748b;font-size:12px;'>-0.057%</td><td style='font-size:12px;'>2026-06-15 08:04</td></tr><tr><td>2026-06-15</td><td style='font-weight:700;'>USD/CAD</td><td>LONG</td><td style='font-family:monospace;'>1.39755</td><td class='sl'>SL SL_HIT</td><td style='font-weight:700;font-family:monospace;'>-8.0</td><td style='color:#64748b;font-size:12px;'>-0.057%</td><td style='font-size:12px;'>2026-06-15 08:01</td></tr></tbody></table></div>
+
+<div class="footer">Forex Live Screener &middot; 2026-06-15 09:16:43</div>
+</body>
+</html>

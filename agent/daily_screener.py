@@ -11,6 +11,8 @@ Usage:
 
 import sys, json, os, io, csv, warnings, subprocess
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+import math
+from collections import Counter
 from datetime import datetime, date
 
 import numpy as np
@@ -237,6 +239,21 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     .latest-card { flex-direction:column; text-align:center; }
     .latest-card .levels { justify-content:center; }
   }
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
+  .chart-card { background:#0f172a; border:1px solid #1e293b; border-radius:14px; overflow:hidden; padding:16px; }
+  .chart-card h3 { font-size:12px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-bottom:12px; padding-left:4px; }
+  .analysis-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:28px; }
+  .analysis-card { background:#0f172a; border:1px solid #1e293b; border-radius:14px; padding:16px; }
+  .analysis-card h3 { font-size:12px; font-family:monospace; text-transform:uppercase; letter-spacing:1px; color:#64748b; margin-bottom:12px; }
+  .mini-table { width:100%; font-size:12px; border-collapse:collapse; }
+  .mini-table th { color:#64748b; font-family:monospace; font-size:10px; text-transform:uppercase; letter-spacing:1px; padding:6px 4px; border-bottom:1px solid #1e293b; }
+  .mini-table td { padding:6px 4px; border-bottom:1px solid #0f172a; }
+  .mini-table tr:last-child td { border-bottom:none; }
+  .mini-table .num { font-family:monospace; text-align:right; font-weight:600; }
+  @media(max-width:768px) {
+    .charts-grid { grid-template-columns:1fr; }
+    .analysis-grid { grid-template-columns:1fr; }
+  }
 </style>
 </head>
 <body>
@@ -247,9 +264,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 </div>
 <div class="container">
   {stats_html}
+  {stats2_html}
   {latest_html}
   <div class="section-title">Trade Log</div>
   {table_html}
+  {charts_html}
+  {analysis_html}
 </div>
 <div class="footer">Last updated: {timestamp} &middot; {github_html}</div>
 </body>
@@ -279,10 +299,83 @@ def generate_dashboard():
     total_pnl = round(win_pnl + loss_pnl, 2)
     avg_entry = round(sum(float(t.get("entry", 0)) for t in trades) / max(total, 1))
 
+    # ─── Advanced Stats ───
+    profit_factor = 0.0
+    avg_win = 0.0
+    avg_loss = 0.0
+    max_consec_losses = 0
+    best_trade_pnl = 0.0
+    best_trade = ""
+    worst_trade_pnl = 0.0
+    worst_trade = ""
+
+    if total > 0:
+        gw = sum(float(t.get("pnl", "0").replace("+", "").replace("%", "")) for t in trades if "TARGET" in t.get("result", ""))
+        gl = abs(sum(float(t.get("pnl", "0").replace("+", "").replace("%", "")) for t in trades if "SL" in t.get("result", "")))
+        profit_factor = round(gw / gl, 2) if gl > 0 else round(gw, 2) if wins > 0 else 0
+
+        wins_list = [float(t.get("pnl", "0").replace("+", "").replace("%", "")) for t in trades if "TARGET" in t.get("result", "")]
+        losses_list = [float(t.get("pnl", "0").replace("+", "").replace("%", "")) for t in trades if "SL" in t.get("result", "")]
+        avg_win = round(sum(wins_list) / len(wins_list), 2) if wins_list else 0
+        avg_loss = round(sum(losses_list) / len(losses_list), 2) if losses_list else 0
+
+        cur_consec = 0
+        for t in trades:
+            if "SL" in t.get("result", ""):
+                cur_consec += 1
+                max_consec_losses = max(max_consec_losses, cur_consec)
+            else:
+                cur_consec = 0
+
+        for t in trades:
+            pnl_val = float(t.get("pnl", "0").replace("+", "").replace("%", ""))
+            if pnl_val > best_trade_pnl:
+                best_trade_pnl = pnl_val
+                best_trade = t.get("symbol", "")
+            if pnl_val < worst_trade_pnl:
+                worst_trade_pnl = pnl_val
+                worst_trade = t.get("symbol", "")
+
+    # ─── Cumulative PnL + Drawdown ───
+    pnl_cumulative = []
+    running = 0.0
+    for t in trades:
+        pnl_val = float(t.get("pnl", "0").replace("+", "").replace("%", ""))
+        running += pnl_val
+        pnl_cumulative.append(round(running, 2))
+
+    max_dd = 0.0
+    peak = -999.0
+    for v in pnl_cumulative:
+        peak = max(peak, v)
+        dd = v - peak
+        max_dd = min(max_dd, dd)
+
+    # ─── Stock Frequency ───
+    stock_freq = Counter(t.get("symbol", "") for t in trades)
+
+    # ─── Day of Week ───
+    dow_data = {}
+    for t in trades:
+        try:
+            dt = datetime.strptime(t.get("date", ""), "%Y-%m-%d")
+            dow = dt.strftime("%A")
+            if dow not in dow_data:
+                dow_data[dow] = {"count": 0, "wins": 0, "pnl": 0.0}
+            pnl_val = float(t.get("pnl", "0").replace("+", "").replace("%", ""))
+            dow_data[dow]["count"] += 1
+            dow_data[dow]["pnl"] += pnl_val
+            if "TARGET" in t.get("result", ""):
+                dow_data[dow]["wins"] += 1
+        except ValueError:
+            pass
+
+    # ─── Badge ───
     badge_html = f'<div class="badge">{total} trades &middot; {win_rate}% win rate &middot; {now_str[:10]}</div>'
     wr_color = "#4ade80" if win_rate >= 40 else "#eab308" if win_rate >= 25 else "#f87171"
     pnl_color = "#4ade80" if total_pnl >= 0 else "#f87171"
 
+    # ─── Stats Row 1 ───
     stats_html = f"""<div class="stats-row">
 <div class="stat-card"><div class="num" style="color:#94a3b8;">{total}</div><div class="lbl">Total Trades</div></div>
 <div class="stat-card"><div class="num" style="color:#4ade80;">{wins}</div><div class="lbl">Wins</div></div>
@@ -292,6 +385,20 @@ def generate_dashboard():
 <div class="stat-card"><div class="num" style="color:#a78bfa;">{avg_entry:,}</div><div class="lbl">Avg Entry</div></div>
 </div>"""
 
+    # ─── Stats Row 2 ───
+    pf_color = "#4ade80" if profit_factor >= 1.5 else "#eab308" if profit_factor >= 1.0 else "#f87171"
+    best_label = f"{best_trade} {best_trade_pnl:+.2f}%" if best_trade else "-"
+    worst_label = f"{worst_trade} {worst_trade_pnl:+.2f}%" if worst_trade else "-"
+    stats2_html = f"""<div class="stats-row">
+<div class="stat-card"><div class="num" style="color:{pf_color};">{profit_factor}</div><div class="lbl">Profit Factor</div></div>
+<div class="stat-card"><div class="num" style="color:#4ade80;">{avg_win:+.2f}%</div><div class="lbl">Avg Win</div></div>
+<div class="stat-card"><div class="num" style="color:#f87171;">{avg_loss:+.2f}%</div><div class="lbl">Avg Loss</div></div>
+<div class="stat-card"><div class="num" style="color:#f87171;">{max_consec_losses}</div><div class="lbl">Max Consec Losses</div></div>
+<div class="stat-card"><div class="num" style="color:#f87171;">{max_dd:+.2f}%</div><div class="lbl">Max Drawdown</div></div>
+<div class="stat-card"><div class="num" style="color:#4ade80;">{best_trade_pnl:+.2f}%</div><div class="lbl">Best Trade</div></div>
+</div>"""
+
+    # ─── Latest Trade ───
     from os.path import relpath
     report_rel = relpath(REPORT_DIR, ROOT_DIR).replace("\\", "/")
 
@@ -327,6 +434,7 @@ def generate_dashboard():
 <span class="level-tgt">T: ₹{target}</span>
 </div></div>"""
 
+    # ─── Trade Log ───
     if trades:
         rows = []
         for t in reversed(trades):
@@ -345,15 +453,60 @@ def generate_dashboard():
     else:
         table_html = "<div class=\"empty\">No trades yet. The screener runs Mon-Fri at 9:30 AM IST.</div>"
 
+    # ─── Charts ───
+    charts_html = ""
+    if total > 0:
+        eq_svg = svg_equity_curve(pnl_cumulative)
+        pnl_svg = svg_pnl_bars(trades)
+        charts_html = f"""<div class="section-title">Charts</div>
+<div class="charts-grid">
+<div class="chart-card"><h3>Equity Curve</h3>{eq_svg}</div>
+<div class="chart-card"><h3>Trade PnL Distribution</h3>{pnl_svg}</div>
+</div>"""
+
+    # ─── Analysis Tables ───
+    analysis_html = ""
+    if total > 0:
+        sf_rows = ""
+        for sym, cnt in stock_freq.most_common(10):
+            pct = round(cnt / total * 100, 1) if total > 0 else 0
+            sf_rows += f"<tr><td>{sym}</td><td class=\"num\">{cnt}</td><td class=\"num\" style=\"color:#64748b;\">{pct}%</td></tr>"
+
+        dow_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        dow_rows = ""
+        for d in dow_order:
+            if d in dow_data:
+                dd = dow_data[d]
+                wr = round(dd["wins"] / dd["count"] * 100, 1) if dd["count"] > 0 else 0
+                pnl_c = "#4ade80" if dd["pnl"] >= 0 else "#f87171"
+                dow_rows += f"<tr><td>{d[:3]}</td><td class=\"num\">{dd['count']}</td><td class=\"num\">{dd['wins']}</td><td class=\"num\" style=\"color:{pnl_c};\">{dd['pnl']:+.2f}%</td></tr>"
+
+        analysis_html = f"""<div class="section-title">Analysis</div>
+<div class="analysis-grid">
+<div class="analysis-card">
+<h3>Stock Frequency</h3>
+<table class="mini-table"><thead><tr><th>Stock</th><th class="num">Trades</th><th class="num">%</th></tr></thead><tbody>{sf_rows}</tbody></table>
+</div>
+<div class="analysis-card">
+<h3>Day of Week</h3>
+<table class="mini-table"><thead><tr><th>Day</th><th class="num">Trades</th><th class="num">Wins</th><th class="num">PnL</th></tr></thead><tbody>{dow_rows}</tbody></table>
+</div>
+</div>"""
+
+    # ─── Footer ───
     github_html = f'<a href="{github_url}" style="color:#334155;text-decoration:none;">GitHub</a>' if github_url else ""
 
     update_report_index()
 
+    # ─── Assemble ───
     html = (DASHBOARD_HTML
         .replace("{badge_html}", badge_html)
         .replace("{stats_html}", stats_html)
+        .replace("{stats2_html}", stats2_html)
         .replace("{latest_html}", latest_html)
         .replace("{table_html}", table_html)
+        .replace("{charts_html}", charts_html)
+        .replace("{analysis_html}", analysis_html)
         .replace("{timestamp}", now_str)
         .replace("{github_html}", github_html)
     )
@@ -427,6 +580,103 @@ def svg_chart(closes, times, entry, sl, target, sl_label, tgt_label):
     yc = sy(close_val)
     svg += f'<text x="{W-MR-4}" y="{yc-4}" fill="#e2e8f0" font-family="monospace" font-size="11" font-weight="600" text-anchor="end">Close ₹{close_val:,.2f}</text>'
 
+    svg += '</svg>'
+    return svg
+
+
+def svg_equity_curve(values):
+    W, H = 800, 300
+    ML, MR, MT, MB = 70, 16, 24, 44
+    PW = W - ML - MR
+    PH = H - MT - MB
+    if not values:
+        return ""
+    cmin = min(values)
+    cmax = max(values)
+    rng = max(cmax - cmin, 0.5)
+    pad = rng * 0.15
+    ylo = min(cmin - pad, -0.5)
+    yhi = max(cmax + pad, 0.5)
+    def sx(i): return ML + PW * i / max(len(values) - 1, 1)
+    def sy(v): return MT + PH * (yhi - v) / (yhi - ylo)
+    pts = " ".join(f"{sx(i)},{sy(v)}" for i, v in enumerate(values))
+    zero_y = sy(0)
+    y_range = yhi - ylo
+    y_step = 10 ** round(math.log10(y_range)) / 4
+    y_ticks = []
+    v = round(ylo / y_step) * y_step
+    while v <= yhi:
+        y_ticks.append(round(v, 2))
+        v += y_step
+    final_color = "#4ade80" if values[-1] >= 0 else "#f87171"
+    svg = f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">'
+    svg += f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0f172a" rx="12"/>'
+    svg += f'<clipPath id="cp-eq"><rect x="{ML}" y="{MT}" width="{PW}" height="{PH}"/></clipPath>'
+    for vv in y_ticks:
+        y = sy(vv)
+        svg += f'<line x1="{ML}" y1="{y}" x2="{W-MR}" y2="{y}" stroke="#1e293b" stroke-width="1"/>'
+        svg += f'<text x="{ML-6}" y="{y+4}" fill="#64748b" font-family="monospace" font-size="11" text-anchor="end">{vv:+.1f}%</text>'
+    svg += f'<line x1="{ML}" y1="{zero_y}" x2="{W-MR}" y2="{zero_y}" stroke="#334155" stroke-width="1.5"/>'
+    svg += f'<g clip-path="url(#cp-eq)">'
+    if len(values) > 1:
+        fill_pts = f"{sx(0)},{zero_y} {pts} {sx(len(values)-1)},{zero_y}"
+        svg += f'<polygon points="{fill_pts}" fill="rgba(129,140,248,0.08)"/>'
+    svg += f'<polyline points="{pts}" fill="none" stroke="{final_color}" stroke-width="2.5" stroke-linejoin="round"/>'
+    svg += f'<circle cx="{sx(0)}" cy="{sy(values[0])}" r="4" fill="{final_color}"/>'
+    svg += f'<circle cx="{sx(len(values)-1)}" cy="{sy(values[-1])}" r="5" fill="{final_color}" stroke="#0f172a" stroke-width="2"/>'
+    svg += f'<text x="{W-MR-4}" y="{sy(values[-1])-8}" fill="{final_color}" font-family="monospace" font-size="12" font-weight="700" text-anchor="end">{values[-1]:+.2f}%</text>'
+    svg += f'</g>'
+    n = len(values)
+    step = max(1, n // 10)
+    for i in range(0, n, step):
+        x = sx(i)
+        svg += f'<text x="{x}" y="{H-MB+16}" fill="#64748b" font-family="monospace" font-size="10" text-anchor="middle">{i+1}</text>'
+    svg += '</svg>'
+    return svg
+
+
+def svg_pnl_bars(trades):
+    W, H = 800, 300
+    ML, MR, MT, MB = 70, 16, 24, 44
+    PW = W - ML - MR
+    PH = H - MT - MB
+    values = [float(t.get("pnl", "0").replace("+", "").replace("%", "")) for t in trades]
+    if not values:
+        return ""
+    cmin = min(values)
+    cmax = max(values)
+    rng = max(cmax - cmin, 0.5)
+    pad = rng * 0.2
+    ylo = min(cmin - pad, -0.5)
+    yhi = max(cmax + pad, 0.5)
+    def sx(i): return ML + PW * (i + 0.5) / len(values)
+    def sy(v): return MT + PH * (yhi - v) / (yhi - ylo)
+    zero_y = sy(0)
+    bar_w = max(8, min(40, PW / len(values) * 0.6))
+    y_range = yhi - ylo
+    y_step = 10 ** round(math.log10(y_range)) / 4
+    y_ticks = []
+    v = round(ylo / y_step) * y_step
+    while v <= yhi:
+        y_ticks.append(round(v, 2))
+        v += y_step
+    svg = f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;">'
+    svg += f'<rect x="0" y="0" width="{W}" height="{H}" fill="#0f172a" rx="12"/>'
+    for vv in y_ticks:
+        y = sy(vv)
+        svg += f'<line x1="{ML}" y1="{y}" x2="{W-MR}" y2="{y}" stroke="#1e293b" stroke-width="1"/>'
+        svg += f'<text x="{ML-6}" y="{y+4}" fill="#64748b" font-family="monospace" font-size="11" text-anchor="end">{vv:+.1f}%</text>'
+    svg += f'<line x1="{ML}" y1="{zero_y}" x2="{W-MR}" y2="{zero_y}" stroke="#334155" stroke-width="1.5"/>'
+    for i, v in enumerate(values):
+        x = sx(i) - bar_w / 2
+        y_top = sy(v) if v >= 0 else zero_y
+        bar_h = abs(sy(v) - zero_y)
+        color = "#4ade80" if v >= 0 else "#f87171"
+        svg += f'<rect x="{x:.1f}" y="{y_top:.1f}" width="{bar_w:.1f}" height="{max(bar_h, 1):.1f}" rx="3" fill="{color}" opacity="0.8"/>'
+    step = max(1, len(values) // 10)
+    for i in range(0, len(values), step):
+        x = sx(i)
+        svg += f'<text x="{x}" y="{H-MB+16}" fill="#64748b" font-family="monospace" font-size="10" text-anchor="middle">{i+1}</text>'
     svg += '</svg>'
     return svg
 
