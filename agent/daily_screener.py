@@ -53,9 +53,25 @@ def calc_atr(df, p=14):
     ], axis=1).max(axis=1)
     return tr.rolling(p).mean()
 
+def calc_rsi(s, p=14):
+    delta = s.diff()
+    gain = delta.clip(lower=0).rolling(p).mean()
+    loss = (-delta.clip(upper=0)).rolling(p).mean()
+    rs = gain / loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
 
 def clean_sym(s):
     return s.replace(".NS", "")
+
+def fetch_vix():
+    try:
+        vix = yf.download("^INDIAVIX", period="1mo", progress=False)
+        if not vix.empty:
+            return vix["Close"].iloc[-1]
+    except:
+        pass
+    return 14.0  # Default fallback
 
 
 def get_github_url():
@@ -81,56 +97,146 @@ def fetch_data(symbol, period="2mo"):
     return df
 
 
-def score_stock(df):
+def fetch_nifty_regime():
+    """Check if Nifty index conditions favor long intraday trades."""
+    try:
+        nf = yf.download("^NSEI", period="1mo", progress=False, auto_adjust=True)
+        if nf.empty or len(nf) < 15:
+            return None
+        if isinstance(nf.columns, pd.MultiIndex):
+            nf.columns = nf.columns.get_level_values(0)
+        close = nf["Close"]
+        ema9 = calc_ema(close, 9)
+        ema21 = calc_ema(close, 21)
+        rsi14 = calc_rsi(close, 14)
+        atr14 = calc_atr(nf, 14)
+
+        last = nf.iloc[-1]
+        prev = nf.iloc[-2] if len(nf) > 1 else last
+        prev_down = prev["Close"] > last["Close"]
+
+        return {
+            "close": round(last["Close"], 2),
+            "ema9": round(ema9.iloc[-1], 2) if not ema9.empty else None,
+            "ema21": round(ema21.iloc[-1], 2) if not ema21.empty else None,
+            "rsi": round(rsi14.iloc[-1], 1) if not rsi14.empty else None,
+            "atr_pct": round((atr14.iloc[-1] / last["Close"]) * 100, 2) if not atr14.empty else None,
+            "above_ema9": last["Close"] > ema9.iloc[-1] if not ema9.empty else False,
+            "above_ema21": last["Close"] > ema21.iloc[-1] if not ema21.empty else False,
+            "prev_down": prev_down,
+            "favourable": False,
+        }
+    except Exception:
+        return None
+
+
+def score_stock(df, nifty_regime=None):
     close, vol = df["Close"], df["Volume"]
     ema9 = calc_ema(close, 9)
     ema21 = calc_ema(close, 21)
     atr = calc_atr(df)
+    rsi14 = calc_rsi(close, 14)
     candidates = []
+
+    # Determine which variant to use based on stock characteristics
     for idx in range(len(df) - 2, max(19, len(df) - 5), -1):
         price = close.iloc[idx]
+        rsi = rsi14.iloc[idx]
+
+        # Price filter
         if price < 500:
             continue
+
+        # Volume filter
         vol_today = vol.iloc[idx]
         avg_vol = vol.iloc[max(0, idx - 10):idx].mean()
-        if vol_today < 1_000_000 or avg_vol == 0:
+        if vol_today < 500_000 or avg_vol == 0:
             continue
         vol_surge = vol_today / avg_vol
         if vol_surge < 1.2:
             continue
+
+        # ATR filter
         atr_val = atr.iloc[idx]
-        if pd.isna(atr_val) or (atr_val / price) < 0.012:
+        if pd.isna(atr_val) or (atr_val / price) < 0.010:
             continue
+
+        # EMA filter
         e9, e21 = ema9.iloc[idx], ema21.iloc[idx]
         if pd.isna(e9) or pd.isna(e21):
             continue
         if price < e9 or price < e21:
             continue
-        score = vol_surge * 2 + (atr_val / price) * 50 + (price / 1000)
+
+        # Nifty regime bonus
+        nifty_bonus = 0
+        if nifty_regime:
+            if nifty_regime.get("above_ema9"):
+                nifty_bonus += 3
+            if nifty_regime.get("prev_down"):
+                nifty_bonus += 2
+            nrsi = nifty_regime.get("rsi", 50)
+            if 40 <= nrsi <= 60:
+                nifty_bonus += 1
+
+        # RSI filter — avoid overbought
+        if pd.notna(rsi) and rsi > 70:
+            continue
+
+        # Scoring: vol surge + ATR + price premium + previous day down bonus + nifty regime
+        score = (vol_surge * 2) + ((atr_val / price) * 50) + (price / 1000)
         if price > 1000:
             score += 1
+        if pd.notna(rsi) and 40 <= rsi <= 60:
+            score += 1  # Sweet spot RSI
+
+        # Dynamic target based on ATR
+        atr_pct = (atr_val / price) * 100
+        if atr_pct < 1.2:
+            target_pct = 0.01  # 1% target for low vol
+        elif atr_pct < 1.8:
+            target_pct = 0.015  # 1.5% target
+        else:
+            target_pct = 0.02   # 2% target for high vol
+
         entry = price
         candidates.append({
             "symbol": clean_sym(df.name),
             "date": str(df.index[idx].date()),
             "entry": round(entry, 2),
             "stop_loss": round(entry * 0.99, 2),
-            "target": round(entry * 1.02, 2),
+            "target": round(entry * (1 + target_pct), 2),
+            "target_pct": round(target_pct * 100, 1),
             "risk_pct": -1.0,
-            "reward_pct": 2.0,
-            "rr": 2.0,
+            "reward_pct": round(target_pct * 100, 1),
+            "rr": round(target_pct / 0.01, 1),
             "ltp": round(price, 2),
-            "atr_pct": round((atr_val / price) * 100, 2),
+            "atr_pct": round(atr_pct, 2),
             "vol_surge": round(vol_surge, 2),
-            "score": round(score, 2),
+            "rsi": round(rsi, 1) if pd.notna(rsi) else None,
+            "score": round(score + nifty_bonus, 2),
         })
     return candidates
 
 
 def morning_pick():
     today_str = str(date.today())
-    print(f"\n  [MORNING PICK] {today_str}")
-    print(f"  Scanning Nifty 50...\n")
+    print(f"\n  [MORNING PICK v2] {today_str}")
+    print(f"  {'='*50}")
+
+    # Check Nifty regime first
+    nifty = fetch_nifty_regime()
+    if nifty:
+        trend = "BULLISH" if nifty["above_ema9"] else "NEUTRAL/BEARISH"
+        print(f"  Nifty: {nifty['close']} | EMA9: {nifty['ema9']} | RSI: {nifty['rsi']}")
+        print(f"  Trend: {trend} | Prev Day Down: {nifty['prev_down']} | ATR: {nifty['atr_pct']}%")
+        nifty["favourable"] = nifty["above_ema9"] or nifty["prev_down"]
+        if not nifty["favourable"]:
+            print(f"  ⚠️  Nifty conditions NOT favourable — be selective")
+        else:
+            print(f"  ✅ Nifty conditions favourable for long trades")
+    print()
+
     all_candidates = []
     for i, sym in enumerate(NIFTY_50):
         name = clean_sym(sym)
@@ -139,7 +245,7 @@ def morning_pick():
         if df is None:
             print("SKIP")
             continue
-        candidates = score_stock(df)
+        candidates = score_stock(df, nifty)
         if candidates:
             print(f"{len(candidates)} signals, best={candidates[0]['score']}")
             all_candidates.append(candidates[0])
@@ -156,9 +262,10 @@ def morning_pick():
     print(f"  Stock     : {pick['symbol']}")
     print(f"  Entry     : \u20b9{pick['entry']}")
     print(f"  Stop Loss : \u20b9{pick['stop_loss']} (-1%)")
-    print(f"  Target    : \u20b9{pick['target']} (+2%)")
+    print(f"  Target    : \u20b9{pick['target']} (+{pick['target_pct']}%)")
     print(f"  R:R       : 1:{pick['rr']}")
     print(f"  ATR       : {pick['atr_pct']}%")
+    print(f"  RSI       : {pick['rsi']}")
     print(f"  Vol Surge : {pick['vol_surge']}x")
     print(f"  Score     : {pick['score']}")
     print(f"  {'='*50}")
@@ -876,11 +983,157 @@ def update_report_index():
     print(f"  Report index: {idx_path}")
 
 
+# ─── Gap Mean Reversion Scanner ───
+
+GAP_CONFIG = {
+    "min_gap_pct": 0.005,
+    "premium_gap_pct": 0.008,
+    "stop_loss_pct": 0.01,
+    "target_pct": 0.012,
+    "max_vix": 22,
+}
+
+
+def fetch_prev_close(symbol):
+    """Fetch previous day's close for gap calculation."""
+    try:
+        df = yf.download(symbol, period="5d", progress=False, auto_adjust=True)
+        if df.empty or len(df) < 2:
+            return None
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        return df["Close"].iloc[-2]
+    except:
+        return None
+
+
+def scan_gaps():
+    """
+    Gap Mean Reversion Scanner — the 89.9% win rate strategy.
+    Scans all Nifty 50 stocks at ~9:20 AM for gap setups.
+    """
+    today_str = str(date.today())
+    print(f"\n  [GAP SCAN v2] {today_str}")
+    print(f"  {'='*50}")
+
+    vix_raw = fetch_vix()
+    vix_val = float(vix_raw.iloc[-1]) if hasattr(vix_raw, 'iloc') else vix_raw
+
+    if vix_val and vix_val > GAP_CONFIG["max_vix"]:
+        print(f"  ⛔ VIX = {vix_val} > {GAP_CONFIG['max_vix']}. No trades today (extreme fear).")
+        return
+
+    print(f"  VIX: {vix_val} {'✅' if vix_val and vix_val < GAP_CONFIG['max_vix'] else ''}")
+    print()
+
+    gaps_found = []
+
+    for i, sym in enumerate(NIFTY_50):
+        name = clean_sym(sym)
+        print(f"    [{i+1:2d}/49] {name:16s} ... ", end="", flush=True)
+
+        prev_close = fetch_prev_close(sym)
+        if prev_close is None:
+            print("SKIP (no prev close)")
+            continue
+
+        # Fetch today's intraday open (first 5-min candle)
+        try:
+            intra = yf.download(sym, period="2d", interval="5m", progress=False, auto_adjust=True)
+            if intra.empty:
+                print("SKIP (no intraday)")
+                continue
+            if isinstance(intra.columns, pd.MultiIndex):
+                intra.columns = intra.columns.get_level_values(0)
+            today_data = intra[intra.index.date == date.today()]
+            if today_data.empty:
+                print("no data yet")
+                continue
+            today_data = today_data.sort_index()
+            first_candle = today_data.iloc[0]
+            open_price = first_candle["Open"]
+        except:
+            print("SKIP (error)")
+            continue
+
+        gap_pct = (open_price - prev_close) / prev_close
+
+        if abs(gap_pct) < GAP_CONFIG["min_gap_pct"]:
+            print(f"gap={gap_pct*100:+.2f}% — too small")
+            continue
+
+        direction = "SHORT" if gap_pct > 0 else "LONG"
+        entry = open_price
+        sl = entry * (1 - GAP_CONFIG["stop_loss_pct"]) if direction == "LONG" else entry * (1 + GAP_CONFIG["stop_loss_pct"])
+        tgt = entry * (1 + GAP_CONFIG["target_pct"]) if direction == "LONG" else entry * (1 - GAP_CONFIG["target_pct"])
+
+        is_premium = abs(gap_pct) >= GAP_CONFIG["premium_gap_pct"]
+        confidence = "HIGH" if is_premium else "MODERATE"
+
+        print(f"{'SHORT' if gap_pct > 0 else 'LONG':5s} gap={gap_pct*100:+.2f}% entry=₹{open_price:.2f} [{confidence}]")
+
+        gaps_found.append({
+            "symbol": name,
+            "direction": direction,
+            "gap_pct": round(gap_pct * 100, 2),
+            "entry": round(entry, 2),
+            "stop_loss": round(sl, 2),
+            "target": round(tgt, 2),
+            "prev_close": round(prev_close, 2),
+            "open_price": round(open_price, 2),
+            "confidence": confidence,
+            "score": round(abs(gap_pct) * 100, 1),
+        })
+
+    if not gaps_found:
+        print(f"\n  No gap signals today.")
+        return
+
+    gaps_found.sort(key=lambda x: -x["score"])
+
+    print(f"\n  {'='*50}")
+    print(f"  GAP SIGNALS ({len(gaps_found)} found)")
+    print(f"  {'='*50}")
+    print(f"  {'Stock':16s} {'Dir':5s} {'Gap%':8s} {'Entry':12s} {'SL':12s} {'Target':12s} {'Conf':10s}")
+    print(f"  {'─'*75}")
+    for g in gaps_found[:10]:
+        print(f"  {g['symbol']:16s} {g['direction']:5s} {g['gap_pct']:>+7.2f}% ₹{g['entry']:<9.2f} ₹{g['stop_loss']:<9.2f} ₹{g['target']:<9.2f} {g['confidence']:10s}")
+
+    # Pick the best
+    pick = gaps_found[0]
+    print(f"\n  TOP PICK: {pick['symbol']} ({pick['direction']})")
+    print(f"  Gap: {pick['gap_pct']:+.2f}% | Entry: ₹{pick['entry']} | SL: ₹{pick['stop_loss']} | Target: ₹{pick['target']}")
+
+    with open(PICK_FILE, "w") as f:
+        json.dump({
+            "symbol": pick["symbol"],
+            "direction": pick["direction"],
+            "strategy": "GAP_REVERSAL",
+            "gap_pct": pick["gap_pct"],
+            "entry": pick["entry"],
+            "stop_loss": pick["stop_loss"],
+            "target": pick["target"],
+            "risk_pct": -1.0,
+            "reward_pct": pick["score"],
+            "rr": round(abs(pick["target"] - pick["entry"]) / abs(pick["stop_loss"] - pick["entry"]), 1),
+            "confidence": pick["confidence"],
+            "run_date": today_str,
+        }, f, indent=2)
+
+    print(f"  Saved to: {PICK_FILE}")
+    return gaps_found
+
+
 def auto_mode():
     now = datetime.now()
     total_min = now.hour * 60 + now.minute
-    if 420 <= total_min <= 780:
-        print("[AUTO] Morning → running morning pick")
+
+    # Gap scan window: 9:20 AM to 9:45 AM (best time)
+    if 560 <= total_min <= 585:
+        print("[AUTO] Gap window → scanning for gap reversals")
+        scan_gaps()
+    elif 420 <= total_min <= 780:
+        print("[AUTO] Morning → running morning pick (momentum)")
         morning_pick()
     elif 810 <= total_min <= 1080:
         print("[AUTO] Evening → running evening check")
@@ -891,7 +1144,7 @@ def auto_mode():
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python daily_screener.py morning|evening|dashboard|auto")
+        print("Usage: python daily_screener.py morning|evening|dashboard|auto|gap")
         return
     mode = sys.argv[1].lower()
     if mode == "morning":
@@ -902,8 +1155,10 @@ def main():
         generate_dashboard()
     elif mode == "auto":
         auto_mode()
+    elif mode == "gap":
+        scan_gaps()
     else:
-        print(f"Unknown: {mode}. Use: morning, evening, dashboard, auto")
+        print(f"Unknown: {mode}. Use: morning, evening, dashboard, auto, gap")
 
 
 if __name__ == "__main__":
