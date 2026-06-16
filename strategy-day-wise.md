@@ -3,7 +3,7 @@
 > Based on real yfinance data from 49 Nifty 50 stocks, Mar 16 – Jun 15 2026.
 > Every rule here is backed by actual observations, not assumptions.
 
----
+---comm
 
 ## Overview: The Personality of Each Day
 
