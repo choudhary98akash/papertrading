@@ -312,4 +312,141 @@ March was an outlier — only 31.1% gap fill and −0.78% avg return. May/June a
 
 ---
 
+## 12. Even Deeper — Autocorrelation, Z-Score, Sequences & Interactions
+
+### 12.1 Return Autocorrelation — Some Stocks Trend, Some Revert
+
+| Stock | Autocorrelation (r) | Personality |
+|-------|-------------------|-------------|
+| ADANIPORTS | **−0.313** | Strong mean-reverter |
+| INDUSINDBK | −0.292 | Mean-reverter |
+| ASIANPAINT | −0.259 | Mean-reverter |
+| DIVISLAB | −0.198 | Mean-reverter |
+| TCS | −0.175 | Mild mean-reverter |
+| ... | | |
+| INFY | **+0.194** | **Trending** |
+| BHARTIARTL | +0.186 | Trending |
+| HDFCLIFE | +0.177 | Trending |
+| NTPC | +0.167 | Trending |
+| WIPRO | +0.147 | Trending |
+
+The same strategy would produce opposite results on ADANIPORTS (fade moves) vs INFY (follow moves).
+Overall market: r = −0.042 (very slightly mean-reverting).
+
+### 12.2 Gap Z-Score — Gap as Multiple of Stock's Own Average
+
+| Gap / Stock's Avg Gap | Events | Fill Rate | Avg Ret |
+|----------------------|--------|-----------|---------|
+| 0.0–0.5x | 625 | **77.0%** | +0.097% |
+| 0.5–0.8x | 431 | 65.7% | +0.044% |
+| 0.8–1.2x | 411 | 56.4% | +0.023% |
+| 1.2–1.5x | 223 | 43.5% | +0.147% |
+| 1.5–2.0x | 196 | 41.3% | +0.117% |
+| 2.0–3.0x | 149 | 39.6% | +0.623% |
+| 3.0–10.0x | 84 | 29.8% | +1.031% |
+
+This discriminates better than raw gap size. A 0.5% gap in ITC (avg 0.43%) is "typical" — a 0.5% gap in ADANIENT (avg 0.94%) is "small." The z-score captures this.
+
+### 12.3 The Interaction Grid — Previous Return × Gap Size
+
+Fill rate as a function of yesterday's return (rows) and today's gap (columns):
+
+| Prev Ret ↓ / Gap → | Big Gap-Down | Small Gap-Down | Tiny Gap | Small Gap-Up | Big Gap-Up |
+|--------------------|:------------:|:--------------:|:--------:|:------------:|:----------:|
+| **Big Red (−2 to −10%)** | **17.8%** (45) | 82.6% (23) | 91.9% (86) | 75.0% (32) | 37.3% (83) |
+| Moderate Red (−1 to −2%) | 37.7% (53) | 64.2% (53) | 93.2% (133) | 66.2% (74) | 36.6% (71) |
+| Slight Red (−0.3 to −1%) | 42.6% (54) | 71.8% (71) | 90.7% (161) | 65.8% (76) | 34.8% (66) |
+| **Flat (±0.3%)** | 49.3% (69) | 71.8% (85) | 89.8% (235) | 71.9% (89) | 43.0% (93) |
+| Slight Green (+0.3 to +1%) | 40.6% (64) | 68.7% (67) | 89.4% (160) | 65.4% (78) | 38.2% (55) |
+| Moderate Green (+1 to +2%) | 52.5% (59) | 75.4% (65) | 90.0% (150) | 74.6% (67) | 37.9% (58) |
+| **Big Green (+2 to +10%)** | 46.8% (79) | 70.7% (41) | 92.2% (77) | 66.7% (48) | 42.3% (71) |
+
+Most striking cell: **big red day + same-direction big gap → 17.8% fill.** The trend continues.
+Most reliable cell: **moderate red day + tiny gap → 93.2% fill.** Almost guaranteed bounce.
+
+### 12.4 Monday Predicts Tuesday (r = −0.34)
+
+| Condition | Events | Tue Avg Gap |
+|----------|--------|-------------|
+| After Green Monday (+1.37% avg) | 490 | **−0.082%** |
+| After Red Monday (−1.69% avg) | 490 | **+0.196%** |
+
+The correlation between Monday's return and Tuesday's gap is **−0.34** — a genuine mean-reversion effect overnight. Red Monday → buy the Tuesday gap-up.
+
+### 12.5 Unfilled Gaps Are Time Bombs
+
+| Timeframe | Unfilled Gaps That Fill |
+|-----------|------------------------|
+| Within 1 day | **82.8%** |
+| Within 2 days | 88.3% |
+| Within 3 days | 90.0% |
+| Within 5 days | 91.2% |
+
+If a gap doesn't fill on the same day, there's an 83% chance it fills by tomorrow. Unfilled gaps are the exception, not the rule.
+
+### 12.6 Triple Filter — Day × Volume × Direction
+
+| Day | Volume | Direction | Events | Fill Rate | Avg Return |
+|-----|--------|-----------|--------|-----------|-----------|
+| **Wed** | **Low** | **Gap-Down** | 59 | **84.7%** | −0.243% |
+| **Tue** | **Low** | **Gap-Down** | 56 | **82.1%** | −0.385% |
+| Thu | Low | Gap-Up | 48 | 79.2% | +0.235% |
+| Fri | Low | Gap-Down | 31 | 80.6% | −0.282% |
+| Tue | Low | Gap-Up | 41 | 73.2% | +0.500% |
+| Mon | Low | Gap-Up | 99 | 62.6% | +0.594% |
+| ... | | | | | |
+| **Mon** | **High** | **Gap-Down** | 36 | **19.4%** | **−3.283%** |
+| **Mon** | **High** | **Gap-Up** | 32 | **37.5%** | **+2.018%** |
+
+The spread between best (Wed low vol gap-down: 84.7%) and worst (Mon high vol gap-down: 19.4%) is **65 percentage points**. The day and volume context changes everything.
+
+### 12.7 Gap Streaks Self-Destruct
+
+| Consecutive Same-Direction Gaps | Events | Fill Rate |
+|-------------------------------|--------|-----------|
+| 0 (first gap) | 1,117 | 53.6% |
+| 1 | 421 | 51.8% |
+| **2** | **181** | **64.1%** |
+| **3** | **43** | **65.1%** |
+| 4 | 19 | 68.4% |
+| 5 | 4 | 75.0% |
+
+After 2+ gaps in the same direction, the streak is increasingly likely to break. The more consecutive gaps, the higher the chance the next one fills (reverses).
+
+### 12.8 Three-Day Momentum Is U-Shaped
+
+| 3-Day Return | Events | Gap Fill Rate |
+|-------------|--------|-----------|
+| <−3% (hammered) | 243 | 41.2% |
+| −3 to −1% | 368 | 62.0% |
+| −1 to 0% | 269 | **65.4%** |
+| 0 to +1% | 209 | 61.7% |
+| +1 to +3% | 364 | 57.1% |
+| >+3% (ripped) | 312 | 43.3% |
+
+The worst-hit stocks (−3% in 3 days) keep falling (only 41.2% fill). The slightly weak stocks bounce (65.4% fill). The pattern is symmetric — extreme momentum in either direction survives the gap.
+
+### 12.9 Net Gap Bias — Some Stocks Consistently Gap in One Direction
+
+| Most ↑ Biased | % Gap-Ups | Most ↓ Biased | % Gap-Ups |
+|--------------|-----------|--------------|-----------|
+| ADANIENT | **58.5%** | HDFCBANK | **38.6%** |
+| APOLLOHOSP | 57.6% | KOTAKBANK | 40.5% |
+| | | SBILIFE | 39.5% |
+| | | AXISBANK | 43.2% |
+
+ADANIENT gaps up 58.5% of the time vs HDFCBANK at 38.6% — a 20% difference. This is not random. Each stock has a gap personality.
+
+### 12.10 Gap After a Big Day — Reversal or Continuation?
+
+| Pattern | Events | Fill Rate | Story |
+|---------|--------|-----------|-------|
+| Big red day (−2%) → gap-up next day | 97 | 41.2% | Low fill but **+1.63%** return (reversal works) |
+| Big green day (+2%) → gap-down next day | 98 | 53.1% | Higher fill but **−1.21%** return (more weakness) |
+
+After a big red day: gap-up fills rarely (41%) but when it does, the gains are large (+1.63%).
+After a big green day: gap-down fills more often (53%) but the selling continues (−1.21%).
+
+---
+
 *Generated from real yfinance data. No fabricated numbers. No strategy assumptions. Just what the data says.*
