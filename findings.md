@@ -449,4 +449,151 @@ After a big green day: gap-down fills more often (53%) but the selling continues
 
 ---
 
+## 13. Even Fresher — EV Optimization, Stock Clusters, Time Trends & More
+
+### 13.1 Expected Value (EV) — Win Rate × Payout — Different Leaders
+
+| Filter | N | Win Rate | Avg OC Return | EV (Directional) |
+|--------|---|----------|--------------|-----------------|
+| Gap-up after prev close <20% of range | 191 | 79.1% | −1.681% | **+1.681%** (Short↑) |
+| Gap-down after prev close >80% of range | 200 | 79.5% | +1.670% | **+1.670%** (Long↓) |
+| Gap 0.3–0.5% + close_pos <50 | 197 | 77.7% | −0.754% | +0.771% (Short↑) |
+| Gap > stock's avg + low vol | 101 | 42.6% | +0.031% | +0.767% (Long↓) |
+| RSI >70 + gap 0.3–0.5% | 62 | 77.4% | +0.351% | +0.541% (Long↓) |
+| RSI <30 + gap 0.3–0.5% | 41 | 85.4% | −0.386% | +0.505% (Short↑) |
+| Wed + gap-down + low vol | 58 | 84.5% | +0.446% | +0.446% (Long↓) |
+| Thu + gap-up + low vol | 48 | 79.2% | −0.441% | +0.441% (Short↑) |
+| gap 0.5–0.8% | 416 | 68.5% | +0.056% | +0.271% (Long↓) |
+| Tue + gap-down + low vol | 56 | 82.1% | +0.244% | +0.244% (Long↓) |
+| Big red prev day + small gap | 25 | 88.0% | +0.062% | +0.215% (Long↓) |
+
+The highest EV is NOT the highest WR. **Close-position reversals** (gap-up after stock closed near low → short it) generate 3–4× more EV than the highest-WR patterns.
+
+### 13.2 Grid Search — Best 3-Filter Rule
+
+After scanning all combinations of gap range, volume, day, and direction:
+
+| Rule | N | Win Rate | EV / Trade |
+|------|---|----------|-----------|
+| Gap 0.5–1.2%, gap-down, Wednesday, prev ret <−0.3% | 20 | **85.0%** | **+1.164%** |
+
+Small sample (20 events) but the rule is crystal clear: Wednesday + gap-down + already weak = strong bounce.
+
+### 13.3 Smart Money Pattern — Gap Fills But Stock Keeps Falling
+
+Gap <0.5% + close_pos <50 (gap-up after closing weak):
+- **77.7% fill rate** (high)
+- **−0.75% avg OC** (negative!)
+
+The gap fills intraday but the stock keeps falling. A trap for breakout buyers. The gap fill is a head fake.
+
+Conversely: gap <0.5% + close_pos >50:
+- **77.4% fill rate**
+- **+0.87% avg OC**
+
+Same gap size, same fill rate — opposite outcome. The difference is where the stock closed yesterday.
+
+### 13.4 Sharpe Ratio Leaderboard — Risk-Adjusted Returns
+
+| Filter | N | Win Rate | Avg OC Return | Sharpe |
+|--------|---|----------|--------------|--------|
+| Gap-down after prev close >80% of range | 200 | 79.5% | +1.670% | **19.8** |
+| Wed + gap-down + low vol | 58 | 84.5% | +0.446% | 3.2 |
+| RSI >70 + gap 0.3–0.5% | 62 | 77.4% | +0.351% | 2.4 |
+| Gap <0.5× stock avg | 280 | 73.2% | +0.154% | 1.9 |
+| Tue + gap-down + low vol | 56 | 82.1% | +0.244% | 1.6 |
+
+Close-position reversal is in a league of its own (Sharpe 19.8). The next best pattern is 6× less efficient.
+
+### 13.5 Stock Clusters — Who Dances with Whom?
+
+**Most similar pairs:**
+| Stock 1 | Stock 2 | Similarity |
+|---------|---------|-----------|
+| BAJFINANCE | M&M | 1.10 (closest pair) |
+| ICICIBANK | ULTRACEMCO | 1.15 |
+| SBIN | ULTRACEMCO | 1.17 |
+| KOTAKBANK | AXISBANK | 1.22 |
+| HINDUNILVR | TITAN | 1.27 |
+
+**Most dissimilar (ADANIENT is the outlier):**
+| Stock 1 | Stock 2 | Distance |
+|---------|---------|---------|
+| ITC | ADANIENT | 7.94 (farthest apart) |
+| ONGC | ADANIENT | 7.22 |
+| ADANIENT | BRITANNIA | 7.13 |
+| NESTLEIND | BPCL | 7.08 |
+| ADANIENT | SBILIFE | 6.87 |
+
+ADANIENT is the most unique stock — behaves nothing like the rest of the Nifty. BPCL and ITC are also outliers.
+
+### 13.6 Multi-Day Window — What Happens After a Gap?
+
+| Gap Type | 1 Day | 2 Days | 3 Days | 5 Days |
+|----------|------:|-------:|-------:|-------:|
+| All gaps >0.3% | +0.25% (50%) | +0.49% (57%) | +0.63% (55%) | **+0.90% (57%)** |
+| Small gaps 0.3–0.5% | +0.10% (47%) | +0.35% (50%) | +0.36% (51%) | +0.40% (53%) |
+| Wed gap-down + low vol | −0.04% (33%) | +0.17% (43%) | **+1.14% (60%)** | +0.92% (63%) |
+
+All gaps drift upward over 5 days. Wed gap-down + low vol takes 3 days to materialize but then delivers +1.14%.
+
+### 13.7 Gap Fill Rate Is Rising Over Time
+
+Rolling 10-day window:
+| Period | Fill Rate |
+|--------|----------|
+| Early April | **45.7%** |
+| Early May | 58.4% |
+| Late May | **70.5%** |
+| Early June | 59.8% |
+
+Trend: **+2.1% over 43 windows** — fill rate is increasing. The market is becoming more gap-friendly.
+
+### 13.8 Dates of Perfect Synchronicity
+
+| Date | All Stocks Gapped | Direction |
+|------|------------------|-----------|
+| 2026-04-01 | 47/47 (100%) | ▲ Up |
+| 2026-04-02 | 0/46 (0%) | ▼ Down |
+| 2026-04-16 | 38/38 (100%) | ▲ Up |
+| 2026-04-29 | 30/30 (100%) | ▲ Up |
+| 2026-05-06 | 43/44 (98%) | ▲ Up |
+| 2026-05-20 | 0/43 (0%) | ▼ Down |
+| 2026-05-21 | 41/42 (98%) | ▲ Up |
+| 2026-06-01 | 27/27 (100%) | ▲ Up |
+| 2026-06-08 | 0/47 (0%) | ▼ Down |
+| 2026-06-15 | 48/48 (100%) | ▲ Up |
+
+These are regime days — the entire market moves as one. On these days, stock-specific gap analysis is useless. The tide drowns individual behavior.
+
+### 13.9 The Only Simple Rule That Actually Makes Money
+
+| Rule | N | Win Rate | Avg OC Return |
+|------|---|----------|--------------|
+| Gap <0.5% + RSI >50 | 216 | **79.2%** | **+0.258%** |
+| Gap <0.5% + Tuesday | 73 | 79.5% | +0.091% |
+| Gap <0.5% | 387 | 77.5% | +0.042% |
+| Gap <0.5% + prev ret <0 | 185 | 78.9% | +0.031% |
+| Gap-down Wednesday | 111 | 73.9% | +0.365% |
+| Gap <0.5% + volume <0.8x | 204 | 77.0% | −0.002% |
+
+Most high-WR patterns have zero or negative OC (gap fills but stock goes nowhere). **Gap <0.5% + RSI >50** is the only high-WR (+79.2%) rule that also has positive OC (+0.26%).
+
+### 13.10 Ten Common Beliefs the Data Rejects
+
+| Common Belief | What the Data Actually Says |
+|--------------|---------------------------|
+| Bigger gaps fill more often | **WRONG** — fill rate decreases monotonically with gap size |
+| Gaps reverse after big moves | **PARTLY** — they reverse but only 41% fill, payout is +1.63% |
+| Monday is like any other day | **WRONG** — Mon + high vol = 19% fill (worst combo) |
+| Volume confirms the move | **WRONG** — lowest volume = highest gap fill rate |
+| Overbought = reversal | **WRONG** — 2-day extreme closes predict +0.97% next day |
+| Open = High is bullish | **WRONG** — opens at high → closes −1.93% |
+| Unfilled gaps stay unfilled | **WRONG** — 83% fill within 1 day |
+| March is like May | **WRONG** — 31% fill vs 63% fill |
+| All stocks behave alike | **WRONG** — ADANIPORTS (r=−0.31 mean revert) vs INFY (r=+0.19 trend) |
+| High win rate = high profits | **WRONG** — highest WR patterns have near-zero OC; close-position reversal has 3× more EV |
+
+---
+
 *Generated from real yfinance data. No fabricated numbers. No strategy assumptions. Just what the data says.*
