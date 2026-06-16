@@ -50,7 +50,7 @@ def compute_stats(trades):
         "pnl": round(pnl, 2), "avg_pnl": round(pnl / total, 3) if total > 0 else 0
     }
 
-def generate_html(ledger, day_picks, today, day_name, mode):
+def generate_html(ledger, day_picks, today, day_name, mode, nifty_compare=None):
     all_trades = ledger.get("trades", [])
     stats = compute_stats(all_trades)
 
@@ -61,7 +61,8 @@ def generate_html(ledger, day_picks, today, day_name, mode):
     day_stats = []
     for date, trades in sorted(day_breakdown.items()):
         ds = compute_stats(trades)
-        day_stats.append({"date": date, **ds})
+        has_pending = any(t.get("status") == "PENDING" for t in trades)
+        day_stats.append({"date": date, **ds, "has_pending": has_pending})
 
     chart_day_stats = sorted(day_stats, key=lambda x: x["date"])
     table_day_stats = sorted(day_stats, key=lambda x: x["date"], reverse=True)
@@ -69,8 +70,11 @@ def generate_html(ledger, day_picks, today, day_name, mode):
     cum_pnl = []
     running = 0
     for t in all_trades:
-        running += t.get("pnl", 0)
-        cum_pnl.append(round(running, 2))
+        if t.get("status") != "PENDING":
+            running += t.get("pnl", 0)
+            cum_pnl.append(round(running, 2))
+
+    today_pending = any(p.get("status") == "PENDING" for p in day_picks)
 
     picks_rows = ""
     for p in day_picks:
@@ -80,14 +84,70 @@ def generate_html(ledger, day_picks, today, day_name, mode):
         result_display = p.get("result", "PENDING") if not is_pending else "PENDING"
         pnl_display = f"{p['pnl']:+.2f}%" if not is_pending else "--"
         row_cls = "pending" if is_pending else cls
-        picks_rows += f"<tr class='{row_cls}'><td>{p['stock']}</td><td class='{'red' if p['gap']>0 else 'green'}'>{p['gap']:+.2f}%</td><td>{p['vol_ratio']:.1f}x</td><td><span class='badge {'pending-badge' if is_pending else dir_cls}'>{p['trade']}</span></td><td>{p['entry']}</td><td>{p['target']}</td><td>{p['sl']}</td><td>{p['close']}</td><td>{result_display}</td><td>{pnl_display}</td></tr>"
+        picks_rows += f"<tr class='{row_cls}'><td>{p['stock']}</td><td class='{'red' if p['gap']>0 else 'green'}'>{p['gap']:+.2f}%</td><td>{p.get('vol_ratio',0):.1f}x</td><td><span class='badge {'pending-badge' if is_pending else dir_cls}'>{p['trade']}</span></td><td>{p['entry']}</td><td>{p['target']}</td><td>{p['sl']}</td><td>{p['close']}</td><td>{result_display}</td><td>{pnl_display}</td></tr>"
 
     history_rows = ""
     for ds in table_day_stats:
-        cls = "win" if ds["pnl"] > 0 else "loss"
-        history_rows += f"<tr class='{cls}'><td>{ds['date']}</td><td>{ds['total']}</td><td>{ds['wins']}</td><td>{ds['losses']}</td><td>{ds['winrate']}%</td><td>{ds['pnl']:+.2f}%</td></tr>"
+        date = ds["date"]
+        has_pending = ds.get("has_pending", False)
+        row_class = "win" if ds["pnl"] > 0 else "loss"
+        picks_detail_rows = ""
+        verdict_detail_rows = ""
+        trades_today = day_breakdown[date]
+        for t in trades_today:
+            picks_detail_rows += (
+                f"<tr><td>{t['stock']}</td>"
+                f"<td class='{'red' if t.get('gap',0)>0 else 'green'}'>{t.get('gap',0):+.2f}%</td>"
+                f"<td><span class='badge {'long' if t.get('trade')=='LONG' else 'short'}'>{t['trade']}</span></td>"
+                f"<td>{t.get('entry','')}</td>"
+                f"<td>{t.get('target','')}</td>"
+                f"<td>{t.get('sl','')}</td></tr>"
+            )
+            if t.get("status") != "PENDING" and t.get("result"):
+                cls_v = "win" if t.get("pnl",0) > 0 else "loss"
+                verdict_detail_rows += (
+                    f"<tr class='{cls_v}'><td>{t['stock']}</td>"
+                    f"<td><span class='badge {'long' if t.get('trade')=='LONG' else 'short'}'>{t['trade']}</span></td>"
+                    f"<td>{t.get('result','')}</td>"
+                    f"<td class='{'green' if t.get('pnl',0)>0 else 'red'}'>{t.get('pnl',0):+.2f}%</td>"
+                    f"<td>{t.get('close','')}</td></tr>"
+                )
+        has_verdict = len(verdict_detail_rows) > 0
+        picks_section = (
+            "<div class='detail-section'>"
+            "<h4>Morning Picks</h4>"
+            + (f"<table class='sub-table'><tr><th>Stock</th><th>Gap</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th></tr>{picks_detail_rows}</table>"
+               if picks_detail_rows else "<p class='na'>Not Available</p>")
+            + "</div>"
+        )
+        verdict_section = (
+            "<div class='detail-section'>"
+            "<h4>Evening Verdict</h4>"
+            + (f"<table class='sub-table'><tr><th>Stock</th><th>Trade</th><th>Result</th><th>PnL</th><th>Close</th></tr>{verdict_detail_rows}</table>"
+               if has_verdict else "<p class='na'>Not Available" + (" — Verdict pending</p>" if has_pending else "</p>"))
+            + "</div>"
+        )
+        expand_row = f"<tr class='detail-row' data-date='{date}'><td colspan='6'><div class='detail-content'>{picks_section}{verdict_section}</div></td></tr>"
+        history_rows += f"<tr class='day-row {row_class}' onclick='toggleDay({{this}})'><td><span class='arrow'>▶</span> {date}</td><td>{ds['total']}</td><td>{ds['wins']}</td><td>{ds['losses']}</td><td>{ds['winrate']}%</td><td>{ds['pnl']:+.2f}%</td></tr>{expand_row}"
 
-    rule = "Gap 0.3-0.8%: reverse direction. Gap UP > SHORT. Gap DOWN > LONG. Target: 50% fill. SL: 0.5%."
+    compare_data = {"dates": [], "strategy": [], "nifty": []}
+    if nifty_compare:
+        nifty_close_map = dict(zip(nifty_compare.get("dates", []), nifty_compare.get("close", [])))
+        nifty_dates_set = set(nifty_compare.get("dates", []))
+        if nifty_compare.get("close"):
+            first_nifty = nifty_compare["close"][0]
+            running_s = 0
+            for dstat in chart_day_stats:
+                dt = dstat["date"]
+                if dt in nifty_dates_set:
+                    day_pnl = sum(t.get("pnl", 0) for t in day_breakdown[dt] if t.get("status") != "PENDING")
+                    running_s += day_pnl
+                    nifty_ret = (nifty_close_map[dt] / first_nifty - 1) * 100
+                    compare_data["dates"].append(dt)
+                    compare_data["strategy"].append(round(running_s, 2))
+                    compare_data["nifty"].append(round(nifty_ret, 2))
+
+    rule = "Gap 0.3-0.8%: reverse direction. Gap UP → SHORT. Gap DOWN → LONG. Target: 50% fill. SL: 0.5%."
     phase_tag = "Morning Picks" if mode == "morning" else "Evening Results"
 
     html = f'''<!DOCTYPE html>
@@ -100,6 +160,7 @@ def generate_html(ledger, day_picks, today, day_name, mode):
 body {{ font-family:'Segoe UI',system-ui,sans-serif; background:#0f1117; color:#e1e4e8; padding:20px; }}
 h1 {{ font-size:24px; }}
 h2 {{ font-size:18px; margin:20px 0 10px; color:#8b949e; }}
+h4 {{ font-size:13px; margin:0 0 6px; color:#8b949e; }}
 .sub {{ color:#8b949e; font-size:14px; }}
 .stats {{ display:flex; gap:12px; flex-wrap:wrap; margin:16px 0; }}
 .stat {{ background:#161b22; border:1px solid #30363d; border-radius:8px; padding:12px 20px; flex:1; min-width:100px; }}
@@ -113,6 +174,11 @@ tr:hover {{ background:#1c2128; }}
 tr.win {{ border-left:3px solid #3fb950; }}
 tr.loss {{ border-left:3px solid #f85149; }}
 tr.pending {{ border-left:3px solid #d29922; }}
+tr.day-row {{ cursor:pointer; }}
+tr.day-row .arrow {{ display:inline-block; transition:transform .2s; font-size:10px; margin-right:4px; }}
+tr.day-row.open .arrow {{ transform:rotate(90deg); }}
+tr.detail-row {{ display:none; }}
+tr.detail-row.open {{ display:table-row; }}
 .badge {{ display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }}
 .long {{ background:#0d2810; color:#3fb950; }}
 .short {{ background:#280d0d; color:#f85149; }}
@@ -122,9 +188,17 @@ tr.pending {{ border-left:3px solid #d29922; }}
 .phase {{ display:inline-block; padding:4px 12px; border-radius:12px; font-size:11px; font-weight:700; font-family:monospace; }}
 .phase-morning {{ background:#3d2e00; color:#d29922; border:1px solid #665000; }}
 .phase-evening {{ background:#0d2810; color:#3fb950; border:1px solid #005020; }}
+.sub-table {{ font-size:12px; margin:0 0 10px; }}
+.sub-table th {{ font-size:11px; }}
+.detail-content {{ padding:10px 15px; background:#0d1117; border-radius:6px; }}
+.detail-section {{ margin-bottom:8px; }}
+.detail-section:last-child {{ margin-bottom:0; }}
+.na {{ color:#484f58; font-style:italic; font-size:12px; padding:4px 0; }}
+.today-section {{ display:flex; gap:20px; flex-wrap:wrap; margin:10px 0; }}
+.today-sub {{ flex:1; min-width:300px; }}
 </style></head>
 <body>
-<h1>Small Gap Snap - Paper Trader</h1>
+<h1>Small Gap Snap — Paper Trader</h1>
 <p class="sub">Running daily via GitHub Actions &middot; {today} &middot; {day_name} &middot; <span class="phase phase-{'morning' if mode == 'morning' else 'evening'}">{phase_tag}</span></p>
 
 <div class="rule">Strategy: <b>{rule}</b></div>
@@ -142,10 +216,28 @@ tr.pending {{ border-left:3px solid #d29922; }}
 <div class="chart-box"><canvas id="dayChart" height="80"></canvas></div>
 
 <h2>Today's Picks ({len(day_picks)} trades)</h2>
-<table><tr><th>Stock</th><th>Gap</th><th>Vol</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th><th>Close</th><th>Result</th><th>PnL</th></tr>{picks_rows}</table>
+''' + (f'''
+<div class="today-section">
+<div class="today-sub">
+<h4>Morning Picks</h4>
+<table><tr><th>Stock</th><th>Gap</th><th>Vol</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th></tr>{picks_rows}</table>
+</div>
+<div class="today-sub">
+<h4>Evening{" Verdict (Pending)" if today_pending else " Verdict"}</h4>
+<table><tr><th>Stock</th><th>Trade</th><th>Result</th><th>PnL</th><th>Close</th></tr>''' +
+''.join(f"<tr class='{'win' if t.get('pnl',0)>0 else 'loss'}'><td>{t['stock']}</td><td><span class='badge {'long' if t.get('trade')=='LONG' else 'short'}'>{t['trade']}</span></td><td>{t.get('result','PENDING')}</td><td class='{'green' if t.get('pnl',0)>0 else 'red'}'>{t['pnl']:+.2f}%</td><td>{t['close']}</td></tr>" for t in day_picks if t.get('status') != 'PENDING')
++ ("<tr><td colspan='5' style='color:#484f58;text-align:center;'>Awaiting evening verdict...</td></tr>" if today_pending else "")
++ '''</table>
+</div>
+</div>''' if day_picks else "<p class='na'>No data for today yet.</p>") + f'''
 
-<h2>Daily History</h2>
+<h2>Daily History <span style="font-size:12px;color:#484f58;font-weight:400;">(click a date to expand)</span></h2>
 <table><tr><th>Date</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win Rate</th><th>PnL</th></tr>{history_rows}</table>
+
+''' + (f'''
+<h2>Strategy vs Nifty 50</h2>
+<div class="chart-box"><canvas id="compareChart" height="80"></canvas></div>
+''' if compare_data["dates"] else "") + '''
 
 <script>
 const cumData = {json.dumps(cum_pnl)};
@@ -167,13 +259,49 @@ new Chart(document.getElementById('dayChart'), {{
     ] }},
     options: {{ responsive:true, plugins:{{ title:{{ display:true, text:'Daily Performance', color:'#8b949e' }} }}, scales:{{ x:{{ ticks:{{ color:'#8b949e' }} }}, y:{{ ticks:{{ color:'#8b949e' }}, position:'left' }}, y1:{{ ticks:{{ color:'#d29922' }}, position:'right', max:100, grid:{{ drawOnChartArea:false }} }} }} }}
 }});
+
+''' + (f'''
+const compLabels = {json.dumps(compare_data["dates"])};
+const compStrategy = {json.dumps(compare_data["strategy"])};
+const compNifty = {json.dumps(compare_data["nifty"])};
+new Chart(document.getElementById('compareChart'), {{
+    type: 'line',
+    data: {{ labels: compLabels, datasets: [
+        {{ label:'Strategy PnL %', data:compStrategy, borderColor:'#3fb950', backgroundColor:'rgba(63,185,80,0.1)', fill:true, tension:0.3 }},
+        {{ label:'Nifty 50 %', data:compNifty, borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,0.1)', fill:true, tension:0.3 }}
+    ] }},
+    options: {{ responsive:true, plugins:{{ title:{{ display:true, text:'Strategy vs Nifty 50 (Cumulative Return %)', color:'#8b949e' }} }}, scales:{{ x:{{ ticks:{{ color:'#8b949e' }} }}, y:{{ ticks:{{ color:'#8b949e' }} }} }} }}
+}});
+''' if compare_data["dates"] else "") + '''
+</script>
+<script>
+function toggleDay(el) {{
+    var detail = el.nextElementSibling;
+    if (detail && detail.classList.contains('detail-row')) {{
+        detail.classList.toggle('open');
+        el.classList.toggle('open');
+    }}
+}}
 </script>
 <p style="color:#484f58;font-size:12px;margin-top:20px">Auto-generated by Small Gap Snap Paper Trader &middot; {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 </body></html>'''
     return html
 
+
 def write_dashboard(ledger, day_picks, date_str, day_name, mode):
-    html = generate_html(ledger, day_picks, date_str, day_name, mode)
+    nifty_compare = None
+    import yfinance as yf
+    try:
+        df = yf.download("^NSEI", period="6mo", interval="1d", progress=False, auto_adjust=True)
+        if not df.empty:
+            close_series = df['Close'].squeeze()
+            nifty_compare = {
+                "dates": [d.strftime('%Y-%m-%d') for d in close_series.index],
+                "close": [float(c) for c in close_series.values]
+            }
+    except:
+        pass
+    html = generate_html(ledger, day_picks, date_str, day_name, mode, nifty_compare)
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
     print(f"Dashboard: index.html")
