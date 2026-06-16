@@ -24,13 +24,9 @@ jobs:
         run: |
           git config user.name "paper-trader-bot"
           git config user.email "bot@paper-trade.local"
-          git add paper_trader/ledger.json paper_trader/index.html
+          git add paper_trader/ledger.json index.html
           git diff --cached --quiet || git commit -m "Evening verdict $(date +'%Y-%m-%d')"
           git pull --rebase --autostash
           git push
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./paper_trader
-          destination_dir: paper-trading
+      # Note: GitHub Pages serves from root of main branch automatically.
+      # Go to Settings → Pages → Source: "Deploy from branch", Branch: main, / (root).

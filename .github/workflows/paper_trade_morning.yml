@@ -24,7 +24,7 @@ jobs:
         run: |
           git config user.name "paper-trader-bot"
           git config user.email "bot@paper-trade.local"
-          git add paper_trader/ledger.json paper_trader/index.html
+          git add paper_trader/ledger.json index.html
           git diff --cached --quiet || git commit -m "Morning picks $(date +'%Y-%m-%d')"
           git pull --rebase --autostash
           git push

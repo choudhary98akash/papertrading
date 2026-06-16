@@ -174,9 +174,9 @@ new Chart(document.getElementById('dayChart'), {{
 
 def write_dashboard(ledger, day_picks, date_str, day_name, mode):
     html = generate_html(ledger, day_picks, date_str, day_name, mode)
-    with open("paper_trader/index.html", "w", encoding="utf-8") as f:
+    with open("index.html", "w", encoding="utf-8") as f:
         f.write(html)
-    print(f"Dashboard: paper_trader/index.html")
+    print(f"Dashboard: index.html")
 
 def mode_morning():
     import yfinance as yf
