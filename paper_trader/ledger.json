@@ -1,0 +1,30 @@
+{
+  "trades": [
+    {
+      "stock": "AXISBANK",
+      "gap": -0.35,
+      "abs_gap": 0.35,
+      "vol_ratio": 0.57,
+      "trade": "LONG",
+      "entry": 1363.5,
+      "target": 1365.89,
+      "sl": 1356.68,
+      "close": 1366.5,
+      "result": "\u2705 FILLED",
+      "pnl": 0.18,
+      "direction": "gap-down reversal",
+      "gap_filled": true,
+      "fill_pct": 100,
+      "date": "2026-06-16",
+      "day": "Tuesday",
+      "market_tide": "91% up"
+    }
+  ],
+  "runs": [
+    {
+      "date": "2026-06-16",
+      "day": "Tuesday",
+      "trades": 1
+    }
+  ]
+}

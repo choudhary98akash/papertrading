@@ -1,0 +1,44 @@
+name: Paper Trader — Daily Run
+
+on:
+  schedule:
+    # Run weekdays at 10:30 UTC = 4:00 PM IST (after market close + data settles)
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r paper_trader/requirements.txt
+
+      - name: Run paper trader
+        run: python paper_trader/trader.py
+
+      - name: Commit results
+        run: |
+          git config user.name "paper-trader-bot"
+          git config user.email "bot@paper-trade.local"
+          git add paper_trader/ledger.json paper_trader/index.html paper-trading.html
+          git diff --cached --quiet || git commit -m "📊 Paper trade update $(date +'%Y-%m-%d')"
+          git pull --rebase origin main --autostash
+          git push
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./paper_trader
+          destination_dir: paper-trading
