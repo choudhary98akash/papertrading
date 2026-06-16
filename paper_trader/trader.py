@@ -128,7 +128,7 @@ def generate_html(ledger, day_picks, today, day_name, mode, nifty_compare=None):
             + "</div>"
         )
         expand_row = f"<tr class='detail-row' data-date='{date}'><td colspan='6'><div class='detail-content'>{picks_section}{verdict_section}</div></td></tr>"
-        history_rows += f"<tr class='day-row {row_class}' onclick='toggleDay({{this}})'><td><span class='arrow'>▶</span> {date}</td><td>{ds['total']}</td><td>{ds['wins']}</td><td>{ds['losses']}</td><td>{ds['winrate']}%</td><td>{ds['pnl']:+.2f}%</td></tr>{expand_row}"
+        history_rows += f"<tr class='day-row {row_class}' onclick='toggleDay(this)'><td><span class='arrow'>▶</span> {date}</td><td>{ds['total']}</td><td>{ds['wins']}</td><td>{ds['losses']}</td><td>{ds['winrate']}%</td><td>{ds['pnl']:+.2f}%</td></tr>{expand_row}"
 
     compare_data = {"dates": [], "strategy": [], "nifty": []}
     if nifty_compare:
