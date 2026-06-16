@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paper Trader — Live</title>
+<title>Small Gap Snap — Paper Trader</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -27,34 +27,34 @@ tr.loss { border-left:3px solid #f85149; }
 .rule { background:#1a1d24; padding:10px 15px; border-radius:6px; font-size:13px; color:#8b949e; margin:10px 0; }
 </style></head>
 <body>
-<h1>📈 Paper Trader — Live Results</h1>
+<h1>📈 Small Gap Snap — Paper Trader</h1>
 <p class="sub">Running daily via GitHub Actions · 2026-06-16 · Tuesday</p>
 
-<div class="rule">📋 Today's strategy: <b>Tuesday</b> — Trade BOTH directions. Gap-downs (82.1%) prefer LONG. Gap-ups (73.2%) SHORT. Vol<0.8x.</div>
+<div class="rule">📋 Strategy: <b>Gap 0.3–0.8%: reverse direction. Gap UP → SHORT. Gap DOWN → LONG. Target: 50% fill. SL: 0.5%.</b></div>
 
 <div class="stats">
-<div class="stat"><div class="num">1</div><div class="lbl">Total Trades</div></div>
-<div class="stat"><div class="num green">1</div><div class="lbl">Wins</div></div>
-<div class="stat"><div class="num red">0</div><div class="lbl">Losses</div></div>
-<div class="stat"><div class="num green">100.0%</div><div class="lbl">Win Rate</div></div>
-<div class="stat"><div class="num green">+0.18%</div><div class="lbl">Total PnL</div></div>
-<div class="stat"><div class="num green">+0.180%</div><div class="lbl">Avg PnL/Trade</div></div>
+<div class="stat"><div class="num">16</div><div class="lbl">Total Trades</div></div>
+<div class="stat"><div class="num green">14</div><div class="lbl">Wins</div></div>
+<div class="stat"><div class="num red">2</div><div class="lbl">Losses</div></div>
+<div class="stat"><div class="num green">87.5%</div><div class="lbl">Win Rate</div></div>
+<div class="stat"><div class="num green">+2.27%</div><div class="lbl">Total PnL</div></div>
+<div class="stat"><div class="num green">+0.142%</div><div class="lbl">Avg PnL/Trade</div></div>
 </div>
 
 <div class="chart-box"><canvas id="cumChart" height="80"></canvas></div>
 <div class="chart-box"><canvas id="dayChart" height="80"></canvas></div>
 
-<h2>📊 Today's Picks (1 trades)</h2>
-<table><tr><th>Stock</th><th>Gap</th><th>Vol</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th><th>Close</th><th>Result</th><th>PnL</th></tr><tr class='win'><td>AXISBANK</td><td class='green'>-0.35%</td><td>0.6x</td><td><span class='badge long'>LONG</span></td><td>1363.5</td><td>1365.89</td><td>1356.68</td><td>1366.5</td><td>✅ FILLED</td><td>+0.18%</td></tr></table>
+<h2>📊 Today's Picks (16 trades)</h2>
+<table><tr><th>Stock</th><th>Gap</th><th>Vol</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th><th>Close</th><th>Result</th><th>PnL</th></tr><tr class='win'><td>RELIANCE</td><td class='red'>+0.49%</td><td>1.0x</td><td><span class='badge short'>SHORT</span></td><td>1313.4</td><td>1310.2</td><td>1319.97</td><td>1328.8</td><td>TARGET_HIT</td><td>+0.24%</td></tr><tr class='loss'><td>HDFCBANK</td><td class='red'>+0.41%</td><td>0.8x</td><td><span class='badge short'>SHORT</span></td><td>780.5</td><td>778.92</td><td>784.4</td><td>784.9</td><td>STOPPED</td><td>-0.50%</td></tr><tr class='win'><td>ICICIBANK</td><td class='red'>+0.32%</td><td>0.7x</td><td><span class='badge short'>SHORT</span></td><td>1331.9</td><td>1329.75</td><td>1338.56</td><td>1334.3</td><td>TARGET_HIT</td><td>+0.16%</td></tr><tr class='win'><td>WIPRO</td><td class='red'>+0.56%</td><td>0.3x</td><td><span class='badge short'>SHORT</span></td><td>182.39</td><td>181.89</td><td>183.3</td><td>182.67</td><td>TARGET_HIT</td><td>+0.28%</td></tr><tr class='win'><td>AXISBANK</td><td class='green'>-0.35%</td><td>0.9x</td><td><span class='badge long'>LONG</span></td><td>1363.5</td><td>1365.9</td><td>1356.68</td><td>1365.7</td><td>TARGET_HIT</td><td>+0.18%</td></tr><tr class='loss'><td>BAJFINANCE</td><td class='red'>+0.39%</td><td>0.9x</td><td><span class='badge short'>SHORT</span></td><td>946.0</td><td>944.15</td><td>950.73</td><td>959.65</td><td>STOPPED</td><td>-0.50%</td></tr><tr class='win'><td>MARUTI</td><td class='red'>+0.41%</td><td>0.6x</td><td><span class='badge short'>SHORT</span></td><td>13861.0</td><td>13833.0</td><td>13930.3</td><td>13691.0</td><td>TARGET_HIT</td><td>+0.20%</td></tr><tr class='win'><td>TITAN</td><td class='red'>+0.34%</td><td>0.8x</td><td><span class='badge short'>SHORT</span></td><td>4298.1</td><td>4290.8</td><td>4319.59</td><td>4338.0</td><td>TARGET_HIT</td><td>+0.17%</td></tr><tr class='win'><td>NTPC</td><td class='red'>+0.47%</td><td>1.1x</td><td><span class='badge short'>SHORT</span></td><td>349.75</td><td>348.93</td><td>351.5</td><td>355.55</td><td>TARGET_HIT</td><td>+0.24%</td></tr><tr class='win'><td>COALINDIA</td><td class='red'>+0.43%</td><td>0.6x</td><td><span class='badge short'>SHORT</span></td><td>445.95</td><td>445.0</td><td>448.18</td><td>450.95</td><td>TARGET_HIT</td><td>+0.21%</td></tr><tr class='win'><td>EICHERMOT</td><td class='red'>+0.39%</td><td>1.0x</td><td><span class='badge short'>SHORT</span></td><td>7654.0</td><td>7639.25</td><td>7692.27</td><td>7560.5</td><td>TARGET_HIT</td><td>+0.19%</td></tr><tr class='win'><td>GRASIM</td><td class='red'>+0.49%</td><td>0.4x</td><td><span class='badge short'>SHORT</span></td><td>3180.0</td><td>3172.25</td><td>3195.9</td><td>3140.3</td><td>TARGET_HIT</td><td>+0.24%</td></tr><tr class='win'><td>HEROMOTOCO</td><td class='red'>+0.52%</td><td>0.8x</td><td><span class='badge short'>SHORT</span></td><td>5050.0</td><td>5037.0</td><td>5075.25</td><td>5031.0</td><td>TARGET_HIT</td><td>+0.26%</td></tr><tr class='win'><td>SBILIFE</td><td class='red'>+0.69%</td><td>1.5x</td><td><span class='badge short'>SHORT</span></td><td>1771.7</td><td>1765.6</td><td>1780.56</td><td>1767.6</td><td>TARGET_HIT</td><td>+0.34%</td></tr><tr class='win'><td>BAJAJHLDNG</td><td class='red'>+0.62%</td><td>0.8x</td><td><span class='badge short'>SHORT</span></td><td>10350.0</td><td>10318.0</td><td>10401.75</td><td>10464.0</td><td>TARGET_HIT</td><td>+0.31%</td></tr><tr class='win'><td>TRENT</td><td class='red'>+0.50%</td><td>0.6x</td><td><span class='badge short'>SHORT</span></td><td>2915.5</td><td>2908.3</td><td>2930.08</td><td>2897.8</td><td>TARGET_HIT</td><td>+0.25%</td></tr></table>
 
 <h2>📅 Daily History</h2>
-<table><tr><th>Date</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win Rate</th><th>PnL</th></tr><tr class='win'><td>2026-06-16</td><td>1</td><td>1</td><td>0</td><td>100.0%</td><td>+0.18%</td></tr></table>
+<table><tr><th>Date</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win Rate</th><th>PnL</th></tr><tr class='win'><td>2026-06-16</td><td>16</td><td>14</td><td>2</td><td>87.5%</td><td>+2.27%</td></tr></table>
 
 <script>
-const cumData = [0.18];
+const cumData = [0.24, -0.26, -0.1, 0.18, 0.36, -0.14, 0.06, 0.23, 0.47, 0.68, 0.87, 1.11, 1.37, 1.71, 2.02, 2.27];
 const dayLabels = ["2026-06-16"];
-const dayPnls = [0.18];
-const dayWrs = [100.0];
+const dayPnls = [2.27];
+const dayWrs = [87.5];
 
 new Chart(document.getElementById('cumChart'), {
     type: 'line',
@@ -71,5 +71,5 @@ new Chart(document.getElementById('dayChart'), {
     options: { responsive:true, plugins:{ title:{ display:true, text:'Daily Performance', color:'#8b949e' } }, scales:{ x:{ ticks:{ color:'#8b949e' } }, y:{ ticks:{ color:'#8b949e' }, position:'left' }, y1:{ ticks:{ color:'#d29922' }, position:'right', max:100, grid:{ drawOnChartArea:false } } } }
 });
 </script>
-<p style="color:#484f58;font-size:12px;margin-top:20px">Auto-generated by Paper Trader · 2026-06-16 13:47:47 UTC</p>
+<p style="color:#484f58;font-size:12px;margin-top:20px">Auto-generated by Small Gap Snap Paper Trader · 2026-06-16 21:28:41 UTC</p>
 </body></html>
