@@ -237,7 +237,7 @@ tr.detail-row.open {{ display:table-row; }}
 ''' + (f'''
 <h2>Strategy vs Nifty 50</h2>
 <div class="chart-box"><canvas id="compareChart" height="80"></canvas></div>
-''' if compare_data["dates"] else "") + '''
+''' if compare_data["dates"] else "") + f'''
 
 <script>
 const cumData = {json.dumps(cum_pnl)};
@@ -272,7 +272,7 @@ new Chart(document.getElementById('compareChart'), {{
     ] }},
     options: {{ responsive:true, plugins:{{ title:{{ display:true, text:'Strategy vs Nifty 50 (Cumulative Return %)', color:'#8b949e' }} }}, scales:{{ x:{{ ticks:{{ color:'#8b949e' }} }}, y:{{ ticks:{{ color:'#8b949e' }} }} }} }}
 }});
-''' if compare_data["dates"] else "") + '''
+''' if compare_data["dates"] else "") + f'''
 </script>
 <script>
 function toggleDay(el) {{
