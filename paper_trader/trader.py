@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Small Gap Snap — Paper Trader (daily via GitHub Actions)."""
-import json, os, sys
+"""Small Gap Snap — Paper Trader (two-phase: morning picks, evening verdict)."""
+import argparse, json, os, sys, io
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import numpy as np
 
-IST = timezone.utc
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 MIN_GAP = 0.3
 MAX_GAP = 0.8
@@ -25,20 +25,32 @@ NIFTY_50 = [
     'BAJAJHLDNG.NS','INDUSINDBK.NS','SHRIRAMFIN.NS','TATACONSUM.NS','TRENT.NS'
 ]
 
+LEDGER_PATH = "paper_trader/ledger.json"
+
+def load_ledger():
+    if os.path.exists(LEDGER_PATH):
+        return json.load(open(LEDGER_PATH))
+    return {"trades": [], "runs": []}
+
+def save_ledger(ledger):
+    with open(LEDGER_PATH, "w") as f:
+        json.dump(ledger, f, indent=2)
+
 def compute_stats(trades):
-    if not trades:
+    resolved = [t for t in trades if t.get("status") != "PENDING"]
+    if not resolved:
         return {"total": 0, "wins": 0, "losses": 0, "winrate": 0, "pnl": 0, "avg_pnl": 0}
-    wins = sum(1 for t in trades if t.get("pnl", 0) > 0)
-    losses = sum(1 for t in trades if t.get("pnl", 0) < 0)
-    total = len(trades)
-    pnl = sum(t.get("pnl", 0) for t in trades)
+    wins = sum(1 for t in resolved if t.get("pnl", 0) > 0)
+    losses = sum(1 for t in resolved if t.get("pnl", 0) < 0)
+    total = len(resolved)
+    pnl = sum(t.get("pnl", 0) for t in resolved)
     return {
         "total": total, "wins": wins, "losses": losses,
         "winrate": round(wins / total * 100, 1) if total > 0 else 0,
         "pnl": round(pnl, 2), "avg_pnl": round(pnl / total, 3) if total > 0 else 0
     }
 
-def generate_html(ledger, day_picks, today, day_name):
+def generate_html(ledger, day_picks, today, day_name, mode):
     all_trades = ledger.get("trades", [])
     stats = compute_stats(all_trades)
 
@@ -51,6 +63,9 @@ def generate_html(ledger, day_picks, today, day_name):
         ds = compute_stats(trades)
         day_stats.append({"date": date, **ds})
 
+    chart_day_stats = sorted(day_stats, key=lambda x: x["date"])
+    table_day_stats = sorted(day_stats, key=lambda x: x["date"], reverse=True)
+
     cum_pnl = []
     running = 0
     for t in all_trades:
@@ -59,21 +74,26 @@ def generate_html(ledger, day_picks, today, day_name):
 
     picks_rows = ""
     for p in day_picks:
-        cls = "win" if p.get("pnl", 0) > 0 else ("loss" if p.get("pnl", 0) < 0 else "")
+        is_pending = p.get("status") == "PENDING"
+        cls = "" if is_pending else ("win" if p.get("pnl", 0) > 0 else "loss" if p.get("pnl", 0) < 0 else "")
         dir_cls = "long" if p.get("trade") == "LONG" else "short"
-        picks_rows += f"<tr class='{cls}'><td>{p['stock']}</td><td class='{'red' if p['gap']>0 else 'green'}'>{p['gap']:+.2f}%</td><td>{p['vol_ratio']:.1f}x</td><td><span class='badge {dir_cls}'>{p['trade']}</span></td><td>{p['entry']}</td><td>{p['target']}</td><td>{p['sl']}</td><td>{p['close']}</td><td>{p['result']}</td><td>{p['pnl']:+.2f}%</td></tr>"
+        result_display = p.get("result", "PENDING") if not is_pending else "PENDING"
+        pnl_display = f"{p['pnl']:+.2f}%" if not is_pending else "--"
+        row_cls = "pending" if is_pending else cls
+        picks_rows += f"<tr class='{row_cls}'><td>{p['stock']}</td><td class='{'red' if p['gap']>0 else 'green'}'>{p['gap']:+.2f}%</td><td>{p['vol_ratio']:.1f}x</td><td><span class='badge {'pending-badge' if is_pending else dir_cls}'>{p['trade']}</span></td><td>{p['entry']}</td><td>{p['target']}</td><td>{p['sl']}</td><td>{p['close']}</td><td>{result_display}</td><td>{pnl_display}</td></tr>"
 
     history_rows = ""
-    for ds in sorted(day_stats, key=lambda x: x["date"]):
+    for ds in table_day_stats:
         cls = "win" if ds["pnl"] > 0 else "loss"
         history_rows += f"<tr class='{cls}'><td>{ds['date']}</td><td>{ds['total']}</td><td>{ds['wins']}</td><td>{ds['losses']}</td><td>{ds['winrate']}%</td><td>{ds['pnl']:+.2f}%</td></tr>"
 
-    rule = "Gap 0.3–0.8%: reverse direction. Gap UP → SHORT. Gap DOWN → LONG. Target: 50% fill. SL: 0.5%."
+    rule = "Gap 0.3-0.8%: reverse direction. Gap UP > SHORT. Gap DOWN > LONG. Target: 50% fill. SL: 0.5%."
+    phase_tag = "Morning Picks" if mode == "morning" else "Evening Results"
 
     html = f'''<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Small Gap Snap — Paper Trader</title>
+<title>Small Gap Snap - Paper Trader</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
@@ -92,17 +112,22 @@ th {{ background:#161b22; color:#8b949e; font-weight:600; position:sticky; top:0
 tr:hover {{ background:#1c2128; }}
 tr.win {{ border-left:3px solid #3fb950; }}
 tr.loss {{ border-left:3px solid #f85149; }}
+tr.pending {{ border-left:3px solid #d29922; }}
 .badge {{ display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:600; }}
 .long {{ background:#0d2810; color:#3fb950; }}
 .short {{ background:#280d0d; color:#f85149; }}
+.pending-badge {{ background:#3d2e00; color:#d29922; }}
 .chart-box {{ background:#161b22; border:1px solid #30363d; border-radius:8px; padding:15px; margin:15px 0; }}
 .rule {{ background:#1a1d24; padding:10px 15px; border-radius:6px; font-size:13px; color:#8b949e; margin:10px 0; }}
+.phase {{ display:inline-block; padding:4px 12px; border-radius:12px; font-size:11px; font-weight:700; font-family:monospace; }}
+.phase-morning {{ background:#3d2e00; color:#d29922; border:1px solid #665000; }}
+.phase-evening {{ background:#0d2810; color:#3fb950; border:1px solid #005020; }}
 </style></head>
 <body>
-<h1>📈 Small Gap Snap — Paper Trader</h1>
-<p class="sub">Running daily via GitHub Actions · {today} · {day_name}</p>
+<h1>Small Gap Snap - Paper Trader</h1>
+<p class="sub">Running daily via GitHub Actions &middot; {today} &middot; {day_name} &middot; <span class="phase phase-{'morning' if mode == 'morning' else 'evening'}">{phase_tag}</span></p>
 
-<div class="rule">📋 Strategy: <b>{rule}</b></div>
+<div class="rule">Strategy: <b>{rule}</b></div>
 
 <div class="stats">
 <div class="stat"><div class="num">{stats['total']}</div><div class="lbl">Total Trades</div></div>
@@ -116,17 +141,17 @@ tr.loss {{ border-left:3px solid #f85149; }}
 <div class="chart-box"><canvas id="cumChart" height="80"></canvas></div>
 <div class="chart-box"><canvas id="dayChart" height="80"></canvas></div>
 
-<h2>📊 Today's Picks ({len(day_picks)} trades)</h2>
+<h2>Today's Picks ({len(day_picks)} trades)</h2>
 <table><tr><th>Stock</th><th>Gap</th><th>Vol</th><th>Trade</th><th>Entry</th><th>Target</th><th>SL</th><th>Close</th><th>Result</th><th>PnL</th></tr>{picks_rows}</table>
 
-<h2>📅 Daily History</h2>
+<h2>Daily History</h2>
 <table><tr><th>Date</th><th>Trades</th><th>Wins</th><th>Losses</th><th>Win Rate</th><th>PnL</th></tr>{history_rows}</table>
 
 <script>
 const cumData = {json.dumps(cum_pnl)};
-const dayLabels = {json.dumps([ds['date'] for ds in sorted(day_stats, key=lambda x: x['date'])])};
-const dayPnls = {json.dumps([ds['pnl'] for ds in sorted(day_stats, key=lambda x: x['date'])])};
-const dayWrs = {json.dumps([ds['winrate'] for ds in sorted(day_stats, key=lambda x: x['date'])])};
+const dayLabels = {json.dumps([ds['date'] for ds in chart_day_stats])};
+const dayPnls = {json.dumps([ds['pnl'] for ds in chart_day_stats])};
+const dayWrs = {json.dumps([ds['winrate'] for ds in chart_day_stats])};
 
 new Chart(document.getElementById('cumChart'), {{
     type: 'line',
@@ -143,80 +168,304 @@ new Chart(document.getElementById('dayChart'), {{
     options: {{ responsive:true, plugins:{{ title:{{ display:true, text:'Daily Performance', color:'#8b949e' }} }}, scales:{{ x:{{ ticks:{{ color:'#8b949e' }} }}, y:{{ ticks:{{ color:'#8b949e' }}, position:'left' }}, y1:{{ ticks:{{ color:'#d29922' }}, position:'right', max:100, grid:{{ drawOnChartArea:false }} }} }} }}
 }});
 </script>
-<p style="color:#484f58;font-size:12px;margin-top:20px">Auto-generated by Small Gap Snap Paper Trader · {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
+<p style="color:#484f58;font-size:12px;margin-top:20px">Auto-generated by Small Gap Snap Paper Trader &middot; {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} UTC</p>
 </body></html>'''
-
     return html
 
-def run_paper_trade():
-    import yfinance as yf
+def write_dashboard(ledger, day_picks, date_str, day_name, mode):
+    html = generate_html(ledger, day_picks, date_str, day_name, mode)
+    with open("paper_trader/index.html", "w", encoding="utf-8") as f:
+        f.write(html)
+    print(f"Dashboard: paper_trader/index.html")
 
+def mode_morning():
+    import yfinance as yf
     today = datetime.now()
     dow = today.weekday()
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    day_name = day_names[dow]
-
     if dow >= 5:
-        print(f"Weekend ({day_name}) — no trading")
+        print(f"Weekend ({day_names[dow]}) - no trading")
         return
 
-    print(f"Running Small Gap Snap for {day_name} ({today.strftime('%Y-%m-%d')})")
+    today_str = today.strftime('%Y-%m-%d')
+    print(f"Morning picks - {today_str} ({day_names[dow]})")
 
     stock_names = {s: s.replace('.NS','') for s in NIFTY_50}
 
+    print("Fetching daily data for yesterday close...")
+    df_day = yf.download(NIFTY_50, start=(today - timedelta(days=5)).strftime('%Y-%m-%d'),
+                         end=today_str, interval='1d', progress=False, auto_adjust=True)
+    dates = [d.strftime('%Y-%m-%d') for d in df_day.index]
+
+    if len(dates) < 2:
+        print("Not enough daily data")
+        return
+
+    prev_date = dates[-2]
+    print(f"  Prev close date: {prev_date}")
+
+    print("Fetching 5m data for today's open...")
+    df_5m = yf.download(NIFTY_50, period="2d", interval="5m", progress=False, auto_adjust=True)
+
+    idx_5m = [d.strftime('%Y-%m-%d') for d in df_5m.index]
+    today_5m_mask = [d == today_str for d in idx_5m]
+    today_5m = df_5m[today_5m_mask]
+    if today_5m.empty:
+        print("No 5m data for today yet - market may not have opened")
+        return
+
+    first_candle = today_5m.iloc[0]
+    today_open = first_candle['Open']
+    yesterday_close = df_day['Close'].loc[prev_date]
+
+    print(f"First 5m candle time: {today_5m.index[0]}")
+    print(f"Today's open: {float(today_open[NIFTY_50[0]]):.2f} (sample)")
+
+    ledger = load_ledger()
+    existing_pending = {t['stock'] for t in ledger['trades']
+                        if t.get('date') == today_str and t.get('status') == 'PENDING'}
+    existing_today = {t['stock'] for t in ledger['trades'] if t.get('date') == today_str}
+    if existing_pending:
+        print(f"Already have {len(existing_pending)} pending picks for today - skipping")
+        todays_picks = [t for t in ledger["trades"] if t.get("date") == today_str]
+        write_dashboard(ledger, todays_picks, today_str, day_names[dow], "morning")
+        return
+    if existing_today:
+        print(f"Already have {len(existing_today)} resolved trades for today - skipping")
+        todays_picks = [t for t in ledger["trades"] if t.get("date") == today_str]
+        write_dashboard(ledger, todays_picks, today_str, day_names[dow], "morning")
+        return
+
+    day_picks = []
+    for sym in NIFTY_50:
+            name = stock_names[sym]
+            try:
+                pc = float(yesterday_close[sym])
+                op = float(today_open[sym])
+            except:
+                continue
+            if pc == 0 or np.isnan(pc) or np.isnan(op):
+                continue
+
+            gap = (op - pc) / pc * 100
+            if np.isnan(gap) or abs(gap) < MIN_GAP or abs(gap) > MAX_GAP:
+                continue
+
+            abs_gap = abs(gap)
+            gap_amount = abs(op - pc)
+            trade = "SHORT" if gap > 0 else "LONG"
+
+            if trade == "LONG":
+                sl_price = op * (1 - SL_PCT)
+                target_price = op + gap_amount * TARGET_PCT
+            else:
+                sl_price = op * (1 + SL_PCT)
+                target_price = op - gap_amount * TARGET_PCT
+
+            day_picks.append({
+                "stock": name, "gap": round(gap, 2), "abs_gap": round(abs_gap, 2),
+                "vol_ratio": 0, "trade": trade,
+                "entry": round(op, 2), "target": round(target_price, 2),
+                "sl": round(sl_price, 2), "close": round(op, 2),
+                "result": "PENDING", "pnl": 0,
+                "status": "PENDING",
+                "date": today_str, "day": day_names[dow],
+                "market_tide": ""
+            })
+
+    for p in day_picks:
+        ledger["trades"].append(p)
+    ledger["runs"].append({"date": today_str, "mode": "morning", "trades": len(day_picks)})
+    save_ledger(ledger)
+    print(f"Recorded {len(day_picks)} pending trades")
+
+    todays_picks = [t for t in ledger["trades"] if t.get("date") == today_str]
+    write_dashboard(ledger, todays_picks, today_str, day_names[dow], "morning")
+
+    all_trades = ledger["trades"]
+    pending = [t for t in all_trades if t.get("status") == "PENDING"]
+    print(f"\nPending: {len(pending)} trades waiting for evening verdict")
+
+def mode_evening():
+    import yfinance as yf
+    today = datetime.now()
+    dow = today.weekday()
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    if dow >= 5:
+        print(f"Weekend ({day_names[dow]}) - no trading")
+        return
+
     today_str = today.strftime('%Y-%m-%d')
+    print(f"Evening verdict - {today_str} ({day_names[dow]})")
+
+    ledger = load_ledger()
+    pending_trades = [t for t in ledger['trades']
+                      if t.get('date') == today_str and t.get('status') == 'PENDING']
+
+    if not pending_trades:
+        print("No pending trades for today - morning may not have run")
+        write_dashboard(ledger, [], today_str, day_names[dow], "evening")
+        return
+
+    print(f"Resolving {len(pending_trades)} pending trades...")
+
+    stock_names = {s: s.replace('.NS','') for s in NIFTY_50}
+    rev_names = {v: k for k, v in stock_names.items()}
+
+    print("Fetching today's daily data for verdict...")
     end_str = (today + timedelta(days=2)).strftime('%Y-%m-%d')
-    start_str = (today - timedelta(days=20)).strftime('%Y-%m-%d')
+    start_str = (today - timedelta(days=5)).strftime('%Y-%m-%d')
+    df_day = yf.download(NIFTY_50, start=start_str, end=end_str,
+                         interval='1d', progress=False, auto_adjust=True)
+    dates = [d.strftime('%Y-%m-%d') for d in df_day.index]
+
+    if today_str not in dates:
+        print(f"Today {today_str} not in daily data yet - trying 5m data")
+        df_5m = yf.download(NIFTY_50, period="2d", interval="5m", progress=False, auto_adjust=True)
+        idx_5m = [d.strftime('%Y-%m-%d') for d in df_5m.index]
+        today_mask = [d == today_str for d in idx_5m]
+        today_5m = df_5m[today_mask]
+        if today_5m.empty:
+            print("No intraday data available yet")
+            write_dashboard(ledger, pending_trades, today_str, day_names[dow], "evening")
+            return
+
+        day_high = {}
+        day_low = {}
+        day_close = {}
+        for sym in NIFTY_50:
+            try:
+                day_high[sym] = float(today_5m['High'][sym].max())
+                day_low[sym] = float(today_5m['Low'][sym].min())
+                day_close[sym] = float(today_5m['Close'][sym].iloc[-1])
+            except:
+                continue
+    else:
+        try:
+            thigh = df_day['High'].loc[today_str]
+            tlow = df_day['Low'].loc[today_str]
+            tclose = df_day['Close'].loc[today_str]
+            day_high = {sym: float(thigh[sym]) for sym in NIFTY_50}
+            day_low = {sym: float(tlow[sym]) for sym in NIFTY_50}
+            day_close = {sym: float(tclose[sym]) for sym in NIFTY_50}
+        except Exception as e:
+            print(f"Data error: {e}")
+            write_dashboard(ledger, pending_trades, today_str, day_names[dow], "evening")
+            return
+
+    updated = 0
+    for t in ledger['trades']:
+        if t.get('status') != 'PENDING' or t.get('date') != today_str:
+            continue
+
+        sym = rev_names.get(t['stock'])
+        if not sym:
+            continue
+
+        hp = day_high.get(sym)
+        lp = day_low.get(sym)
+        cp = day_close.get(sym)
+        op = t['entry']
+
+        if hp is None or lp is None or cp is None:
+            continue
+
+        tgt_hit = (hp >= t['target']) if t['trade'] == 'LONG' else (lp <= t['target'])
+        sl_hit = (lp <= t['sl']) if t['trade'] == 'LONG' else (hp >= t['sl'])
+
+        if tgt_hit:
+            exit_price = t['target']
+            result = "TARGET_HIT"
+        elif sl_hit:
+            exit_price = t['sl']
+            result = "STOPPED"
+        else:
+            exit_price = cp
+            result = "TIME_EXIT"
+
+        raw = (exit_price - op) / op * 100
+        pnl = round(-raw if t['trade'] == 'SHORT' else raw, 2)
+
+        t['close'] = round(cp, 2)
+        t['result'] = result
+        t['pnl'] = pnl
+        t['status'] = "RESOLVED"
+        del t['status']
+        updated += 1
+
+    ledger['runs'].append({"date": today_str, "mode": "evening", "resolved": updated})
+    save_ledger(ledger)
+    print(f"Resolved {updated} trades")
+
+    todays_picks = [t for t in ledger["trades"] if t.get("date") == today_str]
+    write_dashboard(ledger, todays_picks, today_str, day_names[dow], "evening")
+
+    all_trades = ledger["trades"]
+    wins = sum(1 for t in all_trades if t.get("pnl", 0) > 0)
+    losses = sum(1 for t in all_trades if t.get("pnl", 0) < 0)
+    total_pnl = sum(t.get("pnl", 0) for t in all_trades)
+    wr = wins / (wins + losses) * 100 if (wins + losses) > 0 else 0
+    print(f"\n{'='*50}")
+    print(f"  SMALL GAP SNAP - EVENING SUMMARY")
+    print(f"{'='*50}")
+    print(f"  Total trades:   {len(all_trades)}")
+    print(f"  Wins: {wins}, Losses: {losses}")
+    print(f"  Win rate: {wr:.1f}%")
+    print(f"  Total PnL: {total_pnl:+.2f}%")
+    print(f"{'='*50}")
+
+def mode_backfill():
+    import yfinance as yf
+    today = datetime.now()
+    dow = today.weekday()
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+    if dow >= 5:
+        print(f"Weekend ({day_names[dow]}) - no trading")
+        return
+
+    print(f"Backfill mode - {today.strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    stock_names = {s: s.replace('.NS','') for s in NIFTY_50}
+    end_str = (today + timedelta(days=2)).strftime('%Y-%m-%d')
+    start_str = (today - timedelta(days=70)).strftime('%Y-%m-%d')
 
     print("Fetching data...")
     try:
         df = yf.download(NIFTY_50, start=start_str, end=end_str, interval='1d', progress=False, auto_adjust=True)
     except Exception as e:
         print(f"Fetch error: {e}")
-        return
+        sys.exit(1)
 
     available_dates = [d.strftime('%Y-%m-%d') for d in df.index]
-    print(f"Available dates: {available_dates}")
+    print(f"Data range: {available_dates[0]} -> {available_dates[-1]} ({len(available_dates)} days)")
 
-    if today_str in available_dates and dow < 5:
-        trade_date = today_str
-    else:
-        completed_dates = [d for d in available_dates if d < today_str]
-        if not completed_dates:
-            completed_dates = available_dates
-        trade_date = completed_dates[-1]
-
-    trade_dt = datetime.strptime(trade_date, '%Y-%m-%d')
-    trade_dow = trade_dt.weekday()
-    actual_day_name = day_names[trade_dow]
-
-    print(f"Trade date: {trade_date} ({['Mon','Tue','Wed','Thu','Fri','Sat','Sun'][trade_dow]})")
-    print(f"System says today is {today_str} ({day_name}) — trading on {trade_date}")
-
-    idx = available_dates.index(trade_date)
-    prev_date = available_dates[idx - 1] if idx > 0 else available_dates[0]
-    print(f"Trading date: {trade_date}, Prev date: {prev_date}")
-
-    ledger_path = "paper_trader/ledger.json"
-    if os.path.exists(ledger_path):
-        ledger = json.load(open(ledger_path))
-    else:
-        ledger = {"trades": [], "runs": []}
-
+    ledger = load_ledger()
     existing_dates = {t.get("date") for t in ledger["trades"]}
-    if trade_date in existing_dates:
-        print(f"Already processed {trade_date} — skipping")
-    else:
+    print(f"Already processed: {len(existing_dates)} days")
+
+    new_count = 0
+    for i in range(1, len(available_dates)):
+        d = available_dates[i]
+        dt = datetime.strptime(d, '%Y-%m-%d')
+        if dt.weekday() >= 5:
+            continue
+        if d in existing_dates:
+            continue
+        print(f"\nProcessing {d}...")
+
+        idx = available_dates.index(d)
+        prev_date = available_dates[idx - 1]
+
         try:
             yclose = df['Close'].loc[prev_date]
-            topen = df['Open'].loc[trade_date]
-            thigh = df['High'].loc[trade_date]
-            tlow = df['Low'].loc[trade_date]
-            tclose = df['Close'].loc[trade_date]
-            tvol = df['Volume'].loc[trade_date]
+            topen = df['Open'].loc[d]
+            thigh = df['High'].loc[d]
+            tlow = df['Low'].loc[d]
+            tclose = df['Close'].loc[d]
+            tvol = df['Volume'].loc[d]
         except Exception as e:
-            print(f"Data error: {e}")
-            return
+            print(f"  Data error: {e}")
+            continue
 
         gap_directions = []
         for sym in NIFTY_50:
@@ -230,11 +479,11 @@ def run_paper_trade():
             except:
                 continue
         pct_up = sum(1 for g in gap_directions if g > 0) / len(gap_directions) * 100 if gap_directions else 50
-        print(f"Market context: {len(gap_directions)} stocks with gaps, {pct_up:.0f}% gap-up, {100-pct_up:.0f}% gap-down")
+        print(f"  Market: {len(gap_directions)} stocks with gaps, {pct_up:.0f}% gap-up")
 
         vol_hist = df['Volume'].loc[:prev_date]
-
         day_picks = []
+
         for sym in NIFTY_50:
             name = stock_names[sym]
             try:
@@ -250,6 +499,8 @@ def run_paper_trade():
                 continue
 
             gap = (op - pc) / pc * 100
+            if np.isnan(gap):
+                continue
             abs_gap = abs(gap)
 
             vols = [float(v) for v in vol_hist[sym].dropna() if not np.isnan(float(v))]
@@ -283,11 +534,7 @@ def run_paper_trade():
                 result = "TIME_EXIT"
 
             raw_pnl = (exit_price - op) / op * 100
-            if trade == "SHORT":
-                pnl = -raw_pnl
-            else:
-                pnl = raw_pnl
-            pnl = round(pnl, 2)
+            pnl = round(-raw_pnl if trade == "SHORT" else raw_pnl, 2)
 
             day_picks.append({
                 "stock": name, "gap": round(gap, 2), "abs_gap": round(abs_gap, 2),
@@ -295,47 +542,49 @@ def run_paper_trade():
                 "entry": round(op, 2), "target": round(target_price, 2),
                 "sl": round(sl_price, 2), "close": round(cp, 2),
                 "result": result, "pnl": pnl,
-                "date": trade_date, "day": actual_day_name,
+                "date": d, "day": datetime.strptime(d, '%Y-%m-%d').strftime('%A'),
                 "market_tide": f"{pct_up:.0f}% up"
             })
 
         for p in day_picks:
             ledger["trades"].append(p)
-        ledger["runs"].append({"date": trade_date, "day": day_name, "trades": len(day_picks)})
+        ledger["runs"].append({"date": d, "mode": "backfill", "trades": len(day_picks)})
+        print(f"  Recorded {len(day_picks)} trades")
+        new_count += 1
 
-        with open(ledger_path, "w") as f:
-            json.dump(ledger, f, indent=2)
+    if new_count > 0:
+        save_ledger(ledger)
+        print(f"\nSaved {new_count} new days to ledger")
 
-        print(f"Recorded {len(day_picks)} trades for {trade_date}")
-
-    todays_picks = [t for t in ledger["trades"] if t.get("date") == trade_date]
-
-    html = generate_html(ledger, todays_picks, trade_date, actual_day_name)
-    html_path = "paper_trader/index.html"
-    with open(html_path, "w", encoding="utf-8") as f:
-        f.write(html)
-
-    with open("paper-trading.html", "w", encoding="utf-8") as f:
-        f.write(html)
-
-    print(f"Dashboard: {html_path}")
-    print(f"Root copy: paper-trading.html")
+    last_date = available_dates[-1]
+    last_dt = datetime.strptime(last_date, '%Y-%m-%d')
+    last_day = day_names[last_dt.weekday()]
+    todays_picks = [t for t in ledger["trades"] if t.get("date") == last_date]
+    write_dashboard(ledger, todays_picks, last_date, last_day, "backfill")
 
     all_trades = ledger["trades"]
     wins = sum(1 for t in all_trades if t.get("pnl", 0) > 0)
     losses = sum(1 for t in all_trades if t.get("pnl", 0) < 0)
     total_pnl = sum(t.get("pnl", 0) for t in all_trades)
-    print(f"\n{'='*50}")
-    print(f"  SMALL GAP SNAP — SUMMARY")
-    print(f"{'='*50}")
-    print(f"  Total runs: {len(ledger['runs'])}")
-    print(f"  Total trades: {len(all_trades)}")
-    print(f"  Wins: {wins}, Losses: {losses}")
     wr = wins / (wins + losses) * 100 if (wins + losses) > 0 else 0
+    print(f"\n{'='*50}")
+    print(f"  SMALL GAP SNAP - SUMMARY")
+    print(f"{'='*50}")
+    print(f"  Processed days: {len(ledger['runs'])}")
+    print(f"  Total trades:   {len(all_trades)}")
+    print(f"  Wins: {wins}, Losses: {losses}")
     print(f"  Win rate: {wr:.1f}%")
     print(f"  Total PnL: {total_pnl:+.2f}%")
-    print(f"  Today: {len(todays_picks)} trades")
     print(f"{'='*50}")
 
 if __name__ == "__main__":
-    run_paper_trade()
+    parser = argparse.ArgumentParser(description="Small Gap Snap Paper Trader")
+    parser.add_argument('--mode', choices=['morning', 'evening', 'backfill'], default='backfill',
+                        help='morning: scan gaps at open, evening: resolve pending trades, backfill: process history')
+    args = parser.parse_args()
+    if args.mode == 'morning':
+        mode_morning()
+    elif args.mode == 'evening':
+        mode_evening()
+    else:
+        mode_backfill()

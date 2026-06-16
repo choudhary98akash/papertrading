@@ -1,0 +1,30 @@
+name: Paper Trader — Morning Picks
+
+on:
+  schedule:
+    - cron: '0 4 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  morning:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: pip install -r paper_trader/requirements.txt
+      - name: Run morning picks
+        run: python paper_trader/trader.py --mode morning
+      - name: Commit results
+        run: |
+          git config user.name "paper-trader-bot"
+          git config user.email "bot@paper-trade.local"
+          git add paper_trader/ledger.json paper_trader/index.html
+          git diff --cached --quiet || git commit -m "Morning picks $(date +'%Y-%m-%d')"
+          git pull --rebase --autostash
+          git push
