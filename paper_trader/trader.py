@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Small Gap Snap — Paper Trader (two-phase: morning picks, evening verdict)."""
-import argparse, json, os, sys, io
+import argparse, json, os, sys, io, urllib.request, urllib.parse
 from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 import numpy as np
@@ -306,6 +306,36 @@ def write_dashboard(ledger, day_picks, date_str, day_name, mode):
         f.write(html)
     print(f"Dashboard: index.html")
 
+FORMSPREE_URL = "https://formspree.io/f/mrevdwen"
+
+def send_report(subject, details):
+    try:
+        data = urllib.parse.urlencode({
+            "subject": subject,
+            "details": details,
+            "_replyto": "",
+        }).encode()
+        urllib.request.urlopen(FORMSPREE_URL, data=data, timeout=15)
+        print(f"Report sent: {subject}")
+    except Exception as e:
+        print(f"Report failed: {e}")
+
+def format_report(mode, today_str, day_name, day_picks, ledger, all_trades=None):
+    if all_trades is None:
+        all_trades = ledger.get("trades", [])
+    stats = compute_stats(all_trades)
+    lines = []
+    lines.append(f"Mode: {mode}")
+    lines.append(f"Date: {today_str} ({day_name})")
+    lines.append(f"Today's picks: {len(day_picks)}")
+    for p in day_picks:
+        status = p.get("status", p.get("result", "?"))
+        pnl = p.get("pnl", 0)
+        lines.append(f"  {p['stock']} {p['trade']} gap={p['gap']:+.2f}% → {status} pnl={pnl:+.2f}%")
+    lines.append(f"")
+    lines.append(f"Overall: {stats['total']} trades, {stats['wins']}W/{stats['losses']}L, WR={stats['winrate']}%, PnL={stats['pnl']:+.2f}%")
+    return "\n".join(lines)
+
 def mode_morning():
     import yfinance as yf
     today = datetime.now()
@@ -413,6 +443,8 @@ def mode_morning():
     all_trades = ledger["trades"]
     pending = [t for t in all_trades if t.get("status") == "PENDING"]
     print(f"\nPending: {len(pending)} trades waiting for evening verdict")
+    report = format_report("morning", today_str, day_names[dow], todays_picks, ledger, all_trades)
+    send_report(f"Morning Picks — {today_str}", report)
 
 def mode_evening():
     import yfinance as yf
@@ -541,6 +573,8 @@ def mode_evening():
     print(f"  Win rate: {wr:.1f}%")
     print(f"  Total PnL: {total_pnl:+.2f}%")
     print(f"{'='*50}")
+    report = format_report("evening", today_str, day_names[dow], todays_picks, ledger, all_trades)
+    send_report(f"Evening Verdict — {today_str}", report)
 
 def mode_backfill():
     import yfinance as yf
@@ -704,6 +738,8 @@ def mode_backfill():
     print(f"  Win rate: {wr:.1f}%")
     print(f"  Total PnL: {total_pnl:+.2f}%")
     print(f"{'='*50}")
+    report = format_report("backfill", last_date, last_day, todays_picks, ledger, all_trades)
+    send_report(f"Backfill — {last_date}", report)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Small Gap Snap Paper Trader")
