@@ -315,7 +315,11 @@ def send_report(subject, details):
             "details": details,
             "_replyto": "",
         }).encode()
-        urllib.request.urlopen(FORMSPREE_URL, data=data, timeout=15)
+        req = urllib.request.Request(
+            FORMSPREE_URL, data=data,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ReportBot/1.0)"}
+        )
+        urllib.request.urlopen(req, timeout=15)
         print(f"Report sent: {subject}")
     except Exception as e:
         print(f"Report failed: {e}")
