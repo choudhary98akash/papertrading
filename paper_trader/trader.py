@@ -12,6 +12,8 @@ MAX_GAP = 0.8
 SL_PCT = 0.005
 TARGET_PCT = 0.50
 
+IST = timezone(timedelta(hours=5, minutes=30))
+
 NIFTY_50 = [
     'RELIANCE.NS','TCS.NS','HDFCBANK.NS','INFY.NS','ICICIBANK.NS',
     'HINDUNILVR.NS','ITC.NS','SBIN.NS','BHARTIARTL.NS','KOTAKBANK.NS',
@@ -342,7 +344,7 @@ def format_report(mode, today_str, day_name, day_picks, ledger, all_trades=None)
 
 def mode_morning():
     import yfinance as yf
-    today = datetime.now()
+    today = datetime.now(IST)
     dow = today.weekday()
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     if dow >= 5:
@@ -452,7 +454,7 @@ def mode_morning():
 
 def mode_evening():
     import yfinance as yf
-    today = datetime.now()
+    today = datetime.now(IST)
     dow = today.weekday()
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     if dow >= 5:
@@ -582,7 +584,7 @@ def mode_evening():
 
 def mode_backfill():
     import yfinance as yf
-    today = datetime.now()
+    today = datetime.now(IST)
     dow = today.weekday()
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
