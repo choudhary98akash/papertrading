@@ -13,5 +13,10 @@ Thumbs.db
 __pycache__/
 *.pyc
 
+# Local run artifacts
+logs/
+run_trader.bat
+nul
+
 # Agent temp files
 agent/live_*.json
