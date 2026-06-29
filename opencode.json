@@ -12,5 +12,42 @@
       "template": "Run the intraday screener workflow — scan the entire Nifty 50 for high-value stocks (prefer price > ₹500 to avoid manipulation), apply 8 criteria, pick the best stock, and write the HTML output at analysis/<date>/<counter>.html.",
       "agent": "pick"
     }
+  },
+  "skill": {
+    "project-context": {
+      "description": "Master project context — load this whenever working on any file in this repo. Covers all files, strategies, workflows, data schemas, and known issues.",
+      "path": ".opencode/skills/project-context"
+    }
+  },
+  "context": {
+    "project": "Indian Stock Market Intraday Trading Tools",
+    "project_skill": ".opencode/skills/project-context/SKILL.md — load this skill for complete project context",
+    "description": "A collection of agents and scripts for NSE intraday analysis: (1) Intraday Screener Agent - scans Nifty 50 with 8-point filter, generates rich HTML reports; (2) Small Gap Snap Paper Trader - automated gap-reversal strategy with morning picks and evening verdicts; (3) Full Backtest Engine - validates gap strategy across 49 Nifty stocks",
+    "key_files": {
+      "agent_definition": ".opencode/agents/pick.md — The main intraday screener agent (primary mode)",
+      "html_generator": "agent/generate_pick_html.py — [MISSING] Required by pick.md but does not exist. Must be created for HTML output to work.",
+      "paper_trader": "paper_trader/trader.py — Small Gap Snap strategy (gap 0.3-0.8%, reverse direction, target 50% fill, SL 0.5%)",
+      "backtest_engine": "paper_trader/backtest_small_gap_snap.py — Parallel backtest across 49 Nifty stocks, 62-day window",
+      "historical_data": "data.json — OHLC, EMAs, RSI, gap analysis for RELIANCE and TCS (62 trading days)",
+      "dashboard": "index.html — Paper trader dashboard with Chart.js, cumulative PnL, daily breakdown",
+      "strategy_docs": "md files/ — Contains strategy documentation (screener, gap-reversal, day-wise breakdowns)"
+    },
+    "workflow": {
+      "pick_command": "Run the pick agent -> research live data -> scan Nifty 50 -> apply 8-point screener -> write JSON to agent/live_pick_data.json -> run python agent/generate_pick_html.py (MISSING) -> output to analysis/<date>/<counter>.html",
+      "paper_trader_morning": "python paper_trader/trader.py --mode morning (scans gaps at ~9:30 AM IST)",
+      "paper_trader_evening": "python paper_trader/trader.py --mode evening (resolves pending trades at ~3:30 PM IST)",
+      "paper_trader_backfill": "python paper_trader/trader.py --mode backfill (processes historical data)"
+    },
+    "critical_issues": [
+      "agent/generate_pick_html.py does NOT exist — The pick.md workflow references it for HTML generation. Need to create it first.",
+      "agent/ directory does not exist — Must be created to hold live_pick_data.json and generate_pick_html.py",
+      "analysis/ directory does not exist — Must be created for HTML output (gitignored per .gitignore)"
+    ],
+    "nifty_50_list": "RELIANCE, TCS, HDFCBANK, INFY, ICICIBANK, HINDUNILVR, ITC, SBIN, BHARTIARTL, KOTAKBANK, LT, WIPRO, AXISBANK, BAJFINANCE, MARUTI, TITAN, SUNPHARMA, ONGC, NTPC, POWERGRID, M&M, HCLTECH, ULTRACEMCO, NESTLEIND, ASIANPAINT, JSWSTEEL, ADANIPORTS, HINDALCO, TATASTEEL, BAJAJFINSV, DRREDDY, ADANIENT, BRITANNIA, CIPLA, COALINDIA, DIVISLAB, EICHERMOT, GRASIM, HEROMOTOCO, HDFCLIFE, SBILIFE, APOLLOHOSP, BPCL, BEL, BAJAJHLDNG, INDUSINDBK, SHRIRAMFIN, TATACONSUM, TRENT",
+    "screener_rules": {
+      "anti_manipulation": "Prefer stocks >₹500 (Tier 1: >₹1000). Higher price = lower manipulation risk.",
+      "eight_points": ["MOMENTUM (EMA20/50)", "VOLUME (150%+ of 10d avg)", "VOLATILITY (ATR >1.5%)", "SENTIMENT (catalyst/flow)", "SUPPORT/RESISTANCE", "RISK/REWARD (min 1:2)", "SECTOR STRENGTH", "EMOTION TRACKER (VIX)"],
+      "candidate_min": "Must analyze at least 4 stocks with full 8-point evaluation"
+    }
   }
 }
